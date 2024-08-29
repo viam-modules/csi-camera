@@ -8,6 +8,10 @@ on:
       - 'README.md'
       - 'docs/**'
 
+permissions:
+  id-token: write
+  contents: read
+
 jobs:
   appimage:
     name: Build/Test/Upload latest
@@ -54,10 +58,13 @@ jobs:
           make image-test
           make test-package
 
-      - name: Authorize GCP upload
-        uses: google-github-actions/auth@v1
+      - id: 'auth'
+        name: 'Authenticate to Google Cloud'
+        uses: 'google-github-actions/auth@v1'
         with:
-          credentials_json: '${{ secrets.GCP_CREDENTIALS }}'
+          create_credentials_file: true
+          workload_identity_provider: ${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ secrets.GCP_SERVICE_ACCOUNT }}
 
       - name: Deploy Files
         uses: google-github-actions/upload-cloud-storage@v0.10.4
