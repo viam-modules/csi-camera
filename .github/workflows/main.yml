@@ -58,24 +58,6 @@ jobs:
           make image-test
           make test-package
 
-      - id: 'auth'
-        name: 'Authenticate to Google Cloud'
-        uses: 'google-github-actions/auth@v1'
-        with:
-          create_credentials_file: true
-          workload_identity_provider: ${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}
-          service_account: ${{ secrets.GCP_SERVICE_ACCOUNT }}
-
-      - name: Deploy Files
-        uses: google-github-actions/upload-cloud-storage@v0.10.4
-        with:
-          headers: "cache-control: no-cache"
-          path: 'bin'
-          destination: 'packages.viam.com/apps/csi-camera/${{ env.TARGET }}'
-          glob: '*aarch64*'
-          parent: false
-          gzip: false
-
       - name: Get latest release version
         id: get_version
         run: |
@@ -92,14 +74,3 @@ jobs:
           echo "COMMIT_COUNT=${{ env.COMMIT_COUNT }}"
           echo "LATEST_RELEASE_VERSION=${{ env.LATEST_RELEASE_VERSION }}"
           echo "version: ${{ env.LATEST_RELEASE_VERSION }}-${{ github.ref_name }}.${{ github.run_number }}"
-
-      - name: Update module registry
-        uses: viamrobotics/upload-module@main
-        if: github.event_name == 'push'
-        with:
-          meta-path: ${{ env.META_PATH }}
-          module-path: bin/viam-csi-latest-aarch64.AppImage
-          platform: linux/arm64
-          version: ${{ env.LATEST_RELEASE_VERSION }}-${{ github.ref_name }}.${{ github.run_number }}
-          key-id: ${{ secrets.viam_key_id }}
-          key-value: ${{ secrets.viam_key_value }}
