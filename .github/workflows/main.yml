@@ -58,6 +58,24 @@ jobs:
           make image-test
           make test-package
 
+      - id: 'auth'
+        name: 'Authenticate to Google Cloud'
+        uses: 'google-github-actions/auth@v1'
+        with:
+          create_credentials_file: true
+          workload_identity_provider: ${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ secrets.GCP_SERVICE_ACCOUNT }}
+
+      - name: Deploy Files
+        uses: google-github-actions/upload-cloud-storage@v0.10.4
+        with:
+          headers: "cache-control: no-cache"
+          path: 'bin'
+          destination: 'packages.viam.com/apps/csi-camera/${{ env.TARGET }}'
+          glob: '*aarch64*'
+          parent: false
+          gzip: false
+
       - name: Get latest release version
         id: get_version
         run: |
