@@ -92,14 +92,3 @@ jobs:
           echo "COMMIT_COUNT=${{ env.COMMIT_COUNT }}"
           echo "LATEST_RELEASE_VERSION=${{ env.LATEST_RELEASE_VERSION }}"
           echo "version: ${{ env.LATEST_RELEASE_VERSION }}-${{ github.ref_name }}.${{ github.run_number }}"
-
-      - name: Update module registry
-        uses: viamrobotics/upload-module@main
-        if: github.event_name == 'push'
-        with:
-          meta-path: ${{ env.META_PATH }}
-          module-path: bin/viam-csi-latest-aarch64.AppImage
-          platform: linux/arm64
-          version: ${{ env.LATEST_RELEASE_VERSION }}-${{ github.ref_name }}.${{ github.run_number }}
-          key-id: ${{ secrets.viam_key_id }}
-          key-value: ${{ secrets.viam_key_value }}
