@@ -36,6 +36,7 @@ void CSICamera::validate_attrs(const AttributeMap attrs) {
     set_attr<int>(attrs, "height_px", &CSICamera::height_px, DEFAULT_INPUT_HEIGHT);
     set_attr<int>(attrs, "frame_rate", &CSICamera::frame_rate, DEFAULT_INPUT_FRAMERATE);
     set_attr<std::string>(attrs, "video_path", &CSICamera::video_path, DEFAULT_INPUT_SENSOR);
+    set_attr<std::string>(attrs, "flip_method", &CSICamera::flip_method, DEFAULT_FLIP_METHOD);
     set_attr<bool>(attrs, "debug", &CSICamera::debug, false);
 }
 
@@ -299,8 +300,9 @@ std::string CSICamera::create_pipeline() const {
         << " ! " << device_params.input_format
         << ",width=" << std::to_string(width_px)
         << ",height=" << std::to_string(height_px)
-        << ",framerate=" << std::to_string(frame_rate)
-        << "/1 ! " << device_params.video_converter
+        << ",framerate=" << std::to_string(frame_rate) << "/1"
+        << " ! " << device_params.flipper << " method=" << flip_method
+        << " ! " << device_params.video_converter
         << " ! " << device_params.output_encoder
         << " ! " << "image/jpeg"
         << " ! appsink name=appsink0 sync=false max-buffers=1 drop=true";

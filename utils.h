@@ -30,6 +30,8 @@ struct device_params {
     std::string input_format;
     std::string video_converter;
     std::string output_encoder;
+    std::string flipper;
+    std::string flip_method;
 };
 
 device_type get_device_type();

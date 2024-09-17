@@ -21,6 +21,8 @@
 #define DEFAULT_VIDEO_CONVERTER "videoconvert"
 #define DEFAULT_OUTPUT_ENCODER "nvjpegenc"
 #define DEFAULT_OUTPUT_MIMETYPE "image/jpeg"
+#define DEFAULT_FLIP "videoflip"
+#define DEFAULT_FLIP_METHOD "none"
 
 // Jetson
 #define JETSON_API_SUBTYPE "csi"

@@ -39,6 +39,7 @@ On the new component panel, copy and paste the following attribute template into
   "width_px": <int>,
   "height_px": <int>,
   "frame_rate": <int>,
+  "flip_method": <string>,
   "debug": <bool>
 }
 ```
@@ -60,6 +61,7 @@ The following attributes are available for `viam:camera:csi` cameras:
 | `height_px` | int | Optional | Height of the image this camera captures in pixels. <br> Default: `1080` |
 | `frame_rate` | int | Optional | The image capture frame rate this camera should use. <br> Default: `30` |
 | `video_path` | string | Optional | The filepath to the input sensor of this camera on your board. If none is given, your robot will attempt to detect the video path automatically. <br> Default: `"0"` </br>  |
+| `flip_method` | string | Optional | The flip method this camera should use. See flip method options [here](https://gstreamer.freedesktop.org/documentation/videofilter/videoflip.html?gi-language=c#members). <br> Default: `none` |
 | `debug` | boolean | Optional | Whether or not you want debug input from this camera in your robot's logs. <br> Default: `false` |
 
 Once configured, check the [Logs tab](https://docs.viam.com/program/debug/) of your robot in the Viam app to make sure your camera has connected and no errors are being raised.

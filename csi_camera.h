@@ -25,6 +25,7 @@ private:
     int height_px = 0;
     int frame_rate = 0;
     std::string video_path;
+    std::string flip_method;
 
     // GST
     GstElement *pipeline = nullptr;

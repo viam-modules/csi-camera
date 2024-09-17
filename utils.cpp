@@ -35,14 +35,16 @@ device_params get_device_params(device_type device) {
                 .input_source = JETSON_INPUT_SOURCE,
                 .input_format = JETSON_INPUT_FORMAT,
                 .video_converter = JETSON_VIDEO_CONVERTER,
-                .output_encoder = JETSON_OUTPUT_ENCODER
+                .output_encoder = JETSON_OUTPUT_ENCODER,
+                .flipper = DEFAULT_FLIP
             };
         case device_type::pi:
             return device_params {
                 .input_source = PI_INPUT_SOURCE,
                 .input_format = PI_INPUT_FORMAT,
                 .video_converter = PI_VIDEO_CONVERTER,
-                .output_encoder = PI_OUTPUT_ENCODER
+                .output_encoder = PI_OUTPUT_ENCODER,
+                .flipper = DEFAULT_FLIP
             };
         default:
             return device_params {
