@@ -34,7 +34,7 @@ Navigate to the **Config** tab of your robot’s page in [the Viam app](https://
 
 ### Configure your CSI camera
 
-On the new component panel, copy and paste the following attribute template into your camera's **Attributes** box. 
+Copy and paste the following attributes into your JSON configuration:
 ```json
 {
   "width_px": <int>,
@@ -42,13 +42,6 @@ On the new component panel, copy and paste the following attribute template into
   "frame_rate": <int>,
 }
 ```
-
-> [!NOTE]  
-> For more information, see [Configure a Robot](https://docs.viam.com/manage/configuration/).
-
-Edit the attributes as applicable and save your config.
-In the **Control** tab of the [Viam app](https://app.viam.com/), you can now view the camera feed. 
-If you do not see anything, check the logs tab for errors.
 
 #### Attributes
 
@@ -61,6 +54,10 @@ The following attributes are available for `viam:camera:csi` cameras:
 | `frame_rate` | int | Optional | The image capture frame rate this camera should use. <br> Default: `30` |
 | `video_path` | string | Optional | The filepath to the input sensor of this camera on your board. If none is given, your robot will attempt to detect the video path automatically. <br> Default: `"0"` </br>  |
 
+Edit the attributes as applicable and save your config.
+In the **Control** tab of the [Viam app](https://app.viam.com/), you can now view the camera feed. 
+If you do not see anything, check the logs tab for errors.
+\
 Once configured, check the [Logs tab](https://docs.viam.com/program/debug/) of your robot in the Viam app to make sure your camera has connected and no errors are being raised.
 
 ### Example Configuration
