@@ -11,8 +11,9 @@
 using namespace viam::sdk;
 
 CSICamera::CSICamera(const std::string name, const AttributeMap attrs) : Camera(std::move(name)) {
+    camera_name = name;
     device = get_device_type();
-    std::cout << "Creating CSICamera with name: " << name << std::endl;
+    std::cout << "Creating CSICamera with name: " << camera_name << std::endl;
     std::cout << "Device type: " << device.name << std::endl;
     init(attrs);
 }
@@ -81,8 +82,19 @@ Camera::raw_image CSICamera::get_image(const std::string mime_type, const Attrib
 }
 
 Camera::image_collection CSICamera::get_images() {
-    std::cerr << "get_images not implemented" << std::endl;
-    return image_collection{};
+    if (debug) {
+        std::cout << "hit get_images" << std::endl;
+    }
+    
+    AttributeMap empty_extra;
+    raw_image image = get_image(DEFAULT_OUTPUT_MIMETYPE, empty_extra);
+    image.source_name = camera_name;
+
+    image_collection collection;
+    collection.images = std::vector<raw_image>{std::move(image)};
+    collection.metadata = response_metadata{std::chrono::system_clock::now()};
+    
+    return collection;
 }
 
 AttributeMap CSICamera::do_command(const AttributeMap command) {

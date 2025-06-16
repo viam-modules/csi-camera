@@ -20,6 +20,7 @@ private:
     device_type device;
 
     // Camera
+    std::string camera_name;
     bool debug;
     int width_px = 0;
     int height_px = 0;
