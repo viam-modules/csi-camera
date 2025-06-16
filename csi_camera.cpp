@@ -11,9 +11,8 @@
 using namespace viam::sdk;
 
 CSICamera::CSICamera(const std::string name, const AttributeMap attrs) : Camera(std::move(name)) {
-    camera_name = name;
     device = get_device_type();
-    std::cout << "Creating CSICamera with name: " << camera_name << std::endl;
+    std::cout << "Creating CSICamera with name: " << name << std::endl;
     std::cout << "Device type: " << device.name << std::endl;
     init(attrs);
 }
@@ -88,12 +87,15 @@ Camera::image_collection CSICamera::get_images() {
     
     AttributeMap empty_extra;
     raw_image image = get_image(DEFAULT_OUTPUT_MIMETYPE, empty_extra);
-    image.source_name = camera_name;
+    image.source_name = ""; // empty string because we don't have multiple sources to differentiate
 
     image_collection collection;
     collection.images = std::vector<raw_image>{std::move(image)};
-    collection.metadata = response_metadata{std::chrono::system_clock::now()};
-    
+    auto now = std::chrono::system_clock::now();
+    auto duration_since_epoch = now.time_since_epoch();
+    auto nanoseconds = std::chrono::duration_cast<std::chrono::nanoseconds>(duration_since_epoch);
+    collection.metadata.captured_at = std::chrono::time_point<long long, std::chrono::nanoseconds>(nanoseconds);
+
     return collection;
 }
 

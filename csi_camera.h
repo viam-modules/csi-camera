@@ -8,6 +8,7 @@
 #include <gst/gst.h>
 #include <gst/app/gstappsink.h>
 #include <viam/sdk/components/camera/camera.hpp>
+#include <viam/sdk/common/utils.hpp>
 #include <viam/api/component/camera/v1/camera.grpc.pb.h>
 
 #include "utils.h"
@@ -20,7 +21,6 @@ private:
     device_type device;
 
     // Camera
-    std::string camera_name;
     bool debug;
     int width_px = 0;
     int height_px = 0;
