@@ -82,7 +82,7 @@ Camera::raw_image CSICamera::get_image(const std::string mime_type, const Attrib
 
 Camera::image_collection CSICamera::get_images() {
     if (debug) {
-        std::cout << "hit get_images" << std::endl;
+        std::cout << "[get_images] start\n";
     }
     
     AttributeMap empty_extra;
@@ -96,6 +96,9 @@ Camera::image_collection CSICamera::get_images() {
     auto nanoseconds = std::chrono::duration_cast<std::chrono::nanoseconds>(duration_since_epoch);
     collection.metadata.captured_at = std::chrono::time_point<long long, std::chrono::nanoseconds>(nanoseconds);
 
+    if (debug) {
+        std::cout << "[get_images] end\n";
+    }
     return collection;
 }
 
