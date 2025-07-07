@@ -32,6 +32,6 @@
 // Pi
 #define PI_API_SUBTYPE "csi-pi"
 #define PI_INPUT_SOURCE "libcamerasrc"
-#define PI_INPUT_FORMAT "video/x-raw"
+#define PI_INPUT_FORMAT "video/x-raw,format=NV12"
 #define PI_VIDEO_CONVERTER "videoconvert"
 #define PI_OUTPUT_ENCODER "jpegenc"
