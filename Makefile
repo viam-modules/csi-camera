@@ -105,7 +105,7 @@ dep:
 		cd ${HOME}/opt/src && \
 		git clone https://github.com/raspberrypi/libcamera.git && \
 		cd libcamera && \
-		git checkout d83ff0a4 && \
+		git checkout v0.5.0+rpt20250429 && \
 		meson setup build --prefix=/usr && \
 		ninja -C build install && \
 		rm -rf ${HOME}/opt/src/libcamera; \
