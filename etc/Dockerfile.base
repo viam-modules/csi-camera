@@ -73,7 +73,7 @@ RUN apt install -y \
     util-linux zsync
 RUN pip3 install -U pip setuptools urllib3==1.26.12 requests==2.26.0
 RUN cd ${HOME}/opt/src && \
-    git clone https://github.com/AppImageCrafters/appimage-builder.git && \
+    git clone -b viam-2025-07-22 https://github.com/viamrobotics/appimage-builder.git && \
     cd appimage-builder && \
     pip3 install ./
 
