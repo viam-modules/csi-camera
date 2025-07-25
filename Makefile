@@ -4,7 +4,7 @@ INSTALL_DIR := $(BUILD_DIR)/AppDir
 BIN_DIR := ./bin
 
 # Docker
-HUB_USER := seanavery
+HUB_USER := viam-modules
 TEST_NAME := viam-csi-test
 DOCK_TAG := 0.0.1 # tag for mod/test images
 BASE_TAG := 0.0.3
