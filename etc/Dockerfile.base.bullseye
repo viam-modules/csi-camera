@@ -1,9 +1,11 @@
 FROM debian:bullseye
 
-ENV HOME /root
+ENV HOME=/root
 ARG DEBIAN_FRONTEND=noninteractive
 
-RUN apt-get -y update
+RUN apt-get update
+
+RUN apt-get -y dist-upgrade
 
 RUN apt-get -y --no-install-recommends install \
     build-essential \
@@ -17,64 +19,42 @@ RUN apt-get -y --no-install-recommends install \
     gpg \
     less \
     libboost-all-dev \
-    libc-ares-dev \
-    libre2-dev \
+    libgrpc++-dev \
+    libprotobuf-dev \
     libssl-dev \
     ninja-build \
     pkg-config \
+    protobuf-compiler-grpc \
     software-properties-common \
     sudo \
-    wget \
-    zlib1g-dev \
-    libprotobuf-dev
+    wget
 
 # Add the public key for the llvm repository
 RUN bash -c 'wget -O - https://apt.llvm.org/llvm-snapshot.gpg.key|apt-key add -'
 RUN apt-add-repository -y 'deb http://apt.llvm.org/bullseye/ llvm-toolchain-bullseye-15 main'
-RUN apt-add-repository -y 'deb http://deb.debian.org/debian bullseye-backports main'
+RUN apt-add-repository -y 'deb https://archive.debian.org/debian bullseye-backports main'
 
 RUN apt-get update
 
 RUN apt-get -y --no-install-recommends install -t llvm-toolchain-bullseye-15 \
     clang-15 \
-    clang-tidy-15
+    clang-tidy-15 \
+    clang-format
 
 RUN apt-get -y --no-install-recommends install -t bullseye-backports \
     cmake
-
-RUN mkdir -p ${HOME}/opt/src
-
-# Install grpc
-RUN cd ${HOME}/opt/src && \
-    git clone --recurse-submodules -b v1.52.0 --depth 1 --shallow-submodules https://github.com/grpc/grpc && \
-    cd grpc && \
-    mkdir -p build && \
-    cd build && \
-    cmake .. -G Ninja \
-        -DgRPC_ZLIB_PROVIDER=package \
-        -DgRPC_CARES_PROVIDER=package \
-        -DgRPC_RE2_PROVIDER=package \
-        -DgRPC_SSL_PROVIDER=package \
-        -DgRPC_INSTALL=ON \
-        -DgRPC_BUILD_TESTS=OFF \
-        -DBUILD_SHARED_LIBS=ON \
-        -DCMAKE_BUILD_TYPE=RelWithDebInfo \
-        -DCMAKE_INSTALL_PREFIX=/usr/local \
-        -DCMAKE_INSTALL_RPATH=/usr/local/lib && \
-    ninja install && \
-    cd .. && \
-    rm -rf build
 
 # Install viam-cpp-sdk
 RUN mkdir -p ${HOME}/opt/src
 RUN cd ${HOME}/opt/src && \
     git clone https://github.com/viamrobotics/viam-cpp-sdk && \
     cd viam-cpp-sdk && \
+    git checkout releases/v0.16.0 && \
     mkdir build && \
     cd build && \
     cmake .. -G Ninja && \
-    ninja all -j 3 && \
-    ninja install -j 3
+    ninja all -j $(nproc) && \
+    ninja install -j $(nproc)
 
 RUN cp -r ${HOME}/opt/src/viam-cpp-sdk/build/install/* /usr/local/
 
