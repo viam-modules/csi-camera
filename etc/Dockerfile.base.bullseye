@@ -53,8 +53,8 @@ RUN cd ${HOME}/opt/src && \
     mkdir build && \
     cd build && \
     cmake .. -G Ninja && \
-    ninja all -j $(nproc) && \
-    ninja install -j $(nproc)
+    ninja all -j 3 && \
+    ninja install -j 3
 
 RUN cp -r ${HOME}/opt/src/viam-cpp-sdk/build/install/* /usr/local/
 

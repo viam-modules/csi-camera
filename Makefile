@@ -8,7 +8,7 @@ HUB_USER := viam-modules/csi-camera
 TEST_NAME := viam-csi-test
 DOCK_TAG := 0.0.1 # tag for mod/test images
 BASE_TAG := 0.0.4
-L4T_TAG := 35.4.1
+L4T_TAG := r36.4.0
 
 # Package
 PACK_NAME := viam-csi
@@ -19,7 +19,7 @@ TARGET ?= pi # [jetson,pi]
 ifeq ($(TARGET), jetson)
 	TEST_BASE=nvcr.io/nvidia/l4t-base:$(L4T_TAG)
 	BASE_NAME=viam-cpp-base-jetson
-	BASE_CONFIG=./etc/Dockerfile.base.l4t
+	BASE_CONFIG=./etc/Dockerfile.base
 	MOD_NAME=viam-csi-module-jetson
 	MOD_CONFIG=./etc/Dockerfile.mod
 	RECIPE=./viam-csi-jetson-arm64.yml

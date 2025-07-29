@@ -1,0 +1,16 @@
+csi-pi:
+  default: true
+  image_arm64: ghcr.io/seanavery/viam-cpp-base-pi:0.0.3
+  minimum_date: 2023-10-26T20:00:00.0Z
+  update_interval: 168h0m0s
+  user: testbot
+  group: testbot
+  persistent: true
+
+csi-jetson-2:
+  image_arm64: ghcr.io/seanavery/viam-cpp-base-jetson:0.0.3
+  minimum_date: 2023-10-26T20:00:00.0Z
+  update_interval: 168h0m0s
+  user: testbot
+  group: testbot
+  persistent: true

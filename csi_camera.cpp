@@ -10,7 +10,8 @@
 
 using namespace viam::sdk;
 
-CSICamera::CSICamera(const std::string name, const AttributeMap attrs) : Camera(std::move(name)) {
+// CSICamera::CSICamera(const std::string name, const AttributeMap attrs) : Camera(std::move(name)) {
+CSICamera::CSICamera(const std::string name, const ProtoStruct& attrs) : Camera(std::move(name)) {
     device = get_device_type();
     std::cout << "Creating CSICamera with name: " << name << std::endl;
     std::cout << "Device type: " << device.name << std::endl;
@@ -22,8 +23,9 @@ CSICamera::~CSICamera() {
     stop_pipeline();
 }
 
-void CSICamera::init(const AttributeMap attrs) {
-    validate_attrs(attrs);
+// void CSICamera::init(const AttributeMap attrs) {
+void CSICamera::init(const ProtoStruct& attrs) {
+    // validate_attrs(attrs);
     auto pipeline_args = create_pipeline();
     if (debug) {
         std::cout << "pipeline_args: " << pipeline_args << std::endl;
@@ -31,33 +33,36 @@ void CSICamera::init(const AttributeMap attrs) {
     init_csi(pipeline_args);
 }
 
-void CSICamera::validate_attrs(const AttributeMap attrs) {
-    set_attr<int>(attrs, "width_px", &CSICamera::width_px, DEFAULT_INPUT_WIDTH);
-    set_attr<int>(attrs, "height_px", &CSICamera::height_px, DEFAULT_INPUT_HEIGHT);
-    set_attr<int>(attrs, "frame_rate", &CSICamera::frame_rate, DEFAULT_INPUT_FRAMERATE);
-    set_attr<std::string>(attrs, "video_path", &CSICamera::video_path, DEFAULT_INPUT_SENSOR);
-    set_attr<bool>(attrs, "debug", &CSICamera::debug, false);
+// void CSICamera::validate_attrs(const AttributeMap attrs) {
+void CSICamera::validate_attrs(const ProtoStruct& attrs) {
+//     set_attr<int>(attrs, "width_px", &CSICamera::width_px, DEFAULT_INPUT_WIDTH);
+//     set_attr<int>(attrs, "height_px", &CSICamera::height_px, DEFAULT_INPUT_HEIGHT);
+//     set_attr<int>(attrs, "frame_rate", &CSICamera::frame_rate, DEFAULT_INPUT_FRAMERATE);
+//     set_attr<std::string>(attrs, "video_path", &CSICamera::video_path, DEFAULT_INPUT_SENSOR);
+//     set_attr<bool>(attrs, "debug", &CSICamera::debug, false);
 }
 
 template <typename T>
-void CSICamera::set_attr(const AttributeMap& attrs, const std::string& name, T CSICamera::* member, T de) {
-    if (attrs->count(name) == 1) {
-        std::shared_ptr<ProtoType> proto = attrs->at(name);
-        auto val = proto->proto_value();
+// void CSICamera::set_attr(const AttributeMap& attrs, const std::string& name, T CSICamera::* member, T de) {
+void CSICamera::set_attr(const ProtoStruct& attrs, const std::string& name, T CSICamera::* member, T de) {
+    // if (attrs->count(name) == 1) {
+    //     std::shared_ptr<ProtoType> proto = attrs->at(name);
+    //     auto val = proto->proto_value();
 
-        if constexpr (std::is_same<T, int>::value) {
-            this->*member = val.number_value();
-        } else if constexpr (std::is_same<T, std::string>::value) {
-            this->*member = val.string_value();
-        } else if constexpr (std::is_same<T, bool>::value) {
-            this->*member = val.bool_value();
-        }
-    } else {
-        this->*member = de; // Set the default value if the attribute is not found
-    }
+    //     if constexpr (std::is_same<T, int>::value) {
+    //         this->*member = val.number_value();
+    //     } else if constexpr (std::is_same<T, std::string>::value) {
+    //         this->*member = va// l.string_value();
+    //     } else if constexpr (std::is_same<T, bool>::value) {
+    //         this->*member = val.bool_value();
+    //     }
+    // } else {
+    //     this->*member = de; // Set the default value if the attribute is not found
+    // }
 }
 
-void CSICamera::reconfigure(const Dependencies deps, const ResourceConfig cfg) {
+// void CSICamera::reconfigure(const Dependencies deps, const ResourceConfig cfg) {
+void CSICamera::reconfigure(const Dependencies& deps, const ResourceConfig& cfg) {
     if (debug) {
         std::cout << "Reconfiguring CSI Camera module" << std::endl;
     }
@@ -66,7 +71,8 @@ void CSICamera::reconfigure(const Dependencies deps, const ResourceConfig cfg) {
     init(attrs);
 }
 
-Camera::raw_image CSICamera::get_image(const std::string mime_type, const AttributeMap& extra) {
+// Camera::raw_image CSICamera::get_image(const std::string mime_type, const AttributeMap& extra) {
+Camera::raw_image CSICamera::get_image(const std::string mime_type, const ProtoStruct& extra) {
     if (debug) {
         std::cout << "hit get_image. expecting mime_type " << mime_type << std::endl;
     }
@@ -85,7 +91,8 @@ Camera::image_collection CSICamera::get_images() {
         std::cout << "[get_images] start\n";
     }
     
-    AttributeMap empty_extra;
+    // AttributeMap empty_extra;
+    ProtoStruct empty_extra;
     raw_image image = get_image(DEFAULT_OUTPUT_MIMETYPE, empty_extra);
     image.source_name = ""; // empty string because we don't have multiple sources to differentiate
 
@@ -94,7 +101,8 @@ Camera::image_collection CSICamera::get_images() {
     auto now = std::chrono::system_clock::now();
     auto duration_since_epoch = now.time_since_epoch();
     auto nanoseconds = std::chrono::duration_cast<std::chrono::nanoseconds>(duration_since_epoch);
-    collection.metadata.captured_at = std::chrono::time_point<long long, std::chrono::nanoseconds>(nanoseconds);
+    // collection.metadata.captured_at = std::chrono::time_point<long long, std::chrono::nanoseconds>(nanoseconds);
+    collection.metadata.captured_at = std::chrono::time_point<std::chrono::system_clock, std::chrono::nanoseconds>(nanoseconds);
 
     if (debug) {
         std::cout << "[get_images] end\n";
@@ -102,17 +110,20 @@ Camera::image_collection CSICamera::get_images() {
     return collection;
 }
 
-AttributeMap CSICamera::do_command(const AttributeMap command) {
+// AttributeMap CSICamera::do_command(const AttributeMap command) {
+ProtoStruct CSICamera::do_command(const ProtoStruct& command) {
     std::cerr << "do_command not implemented" << std::endl;
-    return 0;
+    return ProtoStruct{};
 }
 
-Camera::point_cloud CSICamera::get_point_cloud(const std::string mime_type, const AttributeMap& extra) {
+// Camera::point_cloud CSICamera::get_point_cloud(const std::string mime_type, const AttributeMap& extra) {
+Camera::point_cloud CSICamera::get_point_cloud(const std::string mime_type, const ProtoStruct& extra) {
     std::cerr << "get_point_cloud not implemented" << std::endl;
     return point_cloud{};
 }
 
-std::vector<GeometryConfig> CSICamera::get_geometries(const AttributeMap& extra) {
+// std::vector<GeometryConfig> CSICamera::get_geometries(const AttributeMap& extra) {
+std::vector<GeometryConfig> CSICamera::get_geometries(const ProtoStruct& extra) {
     std::cerr << "get_geometries not implemented" << std::endl;
     return std::vector<GeometryConfig>{};
 }

@@ -4,9 +4,9 @@ ENV HOME /root
 ARG DEBIAN_FRONTEND=noninteractive
 
 RUN apt-get update
+
 RUN apt-get -y dist-upgrade
 
-# Install dependencies
 RUN apt-get -y --no-install-recommends install \
     build-essential \
     ca-certificates \
@@ -18,7 +18,6 @@ RUN apt-get -y --no-install-recommends install \
     gnupg \
     gpg \
     less \
-    libabsl-dev \
     libboost-all-dev \
     libgrpc++-dev \
     libprotobuf-dev \
@@ -42,7 +41,9 @@ RUN apt-get update
 
 RUN apt-get -y --no-install-recommends install -t llvm-toolchain-jammy-15 \
     clang-15 \
-    clang-tidy-15
+    clang-tidy-15 \
+    clang-format
+
 RUN apt-get -y install cmake
 
 # Install viam-cpp-sdk
@@ -52,7 +53,7 @@ RUN cd ${HOME}/opt/src && \
     cd viam-cpp-sdk && \
     mkdir build && \
     cd build && \
-    cmake .. -G Ninja && \
+    cmake .. -G Ninja -DCMAKE_POLICY_VERSION_MINIMUM=3.5 && \
     ninja all -j 3 && \
     ninja install -j 3
 

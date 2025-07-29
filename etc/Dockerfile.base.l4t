@@ -1,10 +1,13 @@
 ARG L4T_TAG
-FROM nvcr.io/nvidia/l4t-base:${L4T_TAG}
+FROM nvcr.io/nvidia/l4t-jetpack:${L4T_TAG}
 
-RUN apt-get -y update
+ENV HOME /root
+ARG DEBIAN_FRONTEND=noninteractive
 
-# install viam-cpp-sdk
-# reference: https://github.com/viamrobotics/viam-cpp-sdk
+RUN apt-get update
+
+RUN apt-get -y dist-upgrade
+
 RUN apt-get -y --no-install-recommends install \
     build-essential \
     ca-certificates \
@@ -17,64 +20,70 @@ RUN apt-get -y --no-install-recommends install \
     gpg \
     less \
     libboost-all-dev \
-    libc-ares-dev \
-    libre2-dev \
+    libgrpc++-dev \
+    libprotobuf-dev \
     libssl-dev \
     ninja-build \
     pkg-config \
+    protobuf-compiler \
+    protobuf-compiler-grpc \
     software-properties-common \
     sudo \
-    wget \
-    zlib1g-dev
+    wget
 
+# Add the public key for the llvm repository to get the correct clang version
 RUN bash -c 'wget -O - https://apt.llvm.org/llvm-snapshot.gpg.key|apt-key add -'
-RUN apt-add-repository -y 'deb http://apt.llvm.org/focal/ llvm-toolchain-focal-15 main'
+RUN apt-add-repository -y 'deb http://apt.llvm.org/jammy/ llvm-toolchain-jammy-15 main'
 
+# Add public key and repository to get cmake 3.25+
 RUN wget -O - https://apt.kitware.com/keys/kitware-archive-latest.asc 2>/dev/null | gpg --dearmor - > /usr/share/keyrings/kitware-archive-keyring.gpg
-RUN echo 'deb [signed-by=/usr/share/keyrings/kitware-archive-keyring.gpg] https://apt.kitware.com/ubuntu/ focal main' > /etc/apt/sources.list.d/kitware.list
-
+RUN echo 'deb [signed-by=/usr/share/keyrings/kitware-archive-keyring.gpg] https://apt.kitware.com/ubuntu/ jammy main' > /etc/apt/sources.list.d/kitware.list
 RUN apt-get update
 
-RUN apt-get -y --no-install-recommends install -t llvm-toolchain-focal-15 \
+RUN apt-get -y --no-install-recommends install -t llvm-toolchain-jammy-15 \
     clang-15 \
-    clang-tidy-15
+    clang-tidy-15 \
+    clang-format
 
 RUN apt-get -y install cmake
 
+
 RUN mkdir -p ${HOME}/opt/src
 
-RUN cd ${HOME}/opt/src && \
-    git clone --recurse-submodules -b v1.52.0 --depth 1 --shallow-submodules https://github.com/grpc/grpc && \
-    cd grpc && \
-    mkdir -p build && \
-    cd build && \
-    cmake .. -G Ninja \
-        -DgRPC_ZLIB_PROVIDER=package \
-        -DgRPC_CARES_PROVIDER=package \
-        -DgRPC_RE2_PROVIDER=package \
-        -DgRPC_SSL_PROVIDER=package \
-        -DgRPC_INSTALL=ON \
-        -DgRPC_BUILD_TESTS=OFF \
-        -DBUILD_SHARED_LIBS=ON \
-        -DCMAKE_BUILD_TYPE=RelWithDebInfo \
-        -DCMAKE_INSTALL_PREFIX=/usr/local \
-        -DCMAKE_INSTALL_RPATH=/usr/local/lib && \
-    ninja install && \
-    cd .. && \
-    rm -rf build
+# RUN cd ${HOME}/opt/src && \
+#     git clone --recurse-submodules -b v1.52.0 --depth 1 --shallow-submodules https://github.com/grpc/grpc && \
+#     cd grpc && \
+#     mkdir -p build && \
+#     cd build && \
+#     cmake .. -G Ninja \
+#         -DgRPC_ZLIB_PROVIDER=package \
+#         -DgRPC_CARES_PROVIDER=package \
+#         -DgRPC_RE2_PROVIDER=package \
+#         -DgRPC_SSL_PROVIDER=package \
+#         -DgRPC_INSTALL=ON \
+#         -DgRPC_BUILD_TESTS=OFF \
+#         -DBUILD_SHARED_LIBS=ON \
+#         -DCMAKE_BUILD_TYPE=RelWithDebInfo \
+#         -DCMAKE_INSTALL_PREFIX=/usr/local \
+#         -DCMAKE_INSTALL_RPATH=/usr/local/lib && \
+#     ninja install && \
+#     cd .. && \
+#     rm -rf build
 
+# Install viam-cpp-sdk
 RUN cd ${HOME}/opt/src && \
     git clone https://github.com/viamrobotics/viam-cpp-sdk && \
     cd viam-cpp-sdk && \
+    git checkout releases/v0.16.0 && \
     mkdir build && \
     cd build && \
-    cmake  -DVIAMCPPSDK_USE_DYNAMIC_PROTOS=ON -DVIAMCPPSDK_OFFLINE_PROTO_GENERATION=ON .. -G Ninja  && \
-    ninja install -j 1
+    cmake .. -G Ninja && \
+    ninja all -j 3 && \
+    ninja install -j 3
 
-# install viam-csi
 RUN cp -r ${HOME}/opt/src/viam-cpp-sdk/build/install/* /usr/local/
 
-# install appimage-builder
+# Install appimage-builder
 RUN apt install -y \
     binutils \
     coreutils \
@@ -90,13 +99,13 @@ RUN apt install -y \
 
 RUN pip3 install -U pip setuptools urllib3==1.26.12 requests==2.26.0
 
-# install appimage-builder
+# Install appimage-builder
 RUN cd ${HOME}/opt/src && \
     git clone -b viam-2025-07-22 https://github.com/viamrobotics/appimage-builder.git && \
     cd appimage-builder && \
     pip3 install ./
 
-# install docker
+# Install docker
 RUN apt-get -y install \
     apt-transport-https \
     ca-certificates \

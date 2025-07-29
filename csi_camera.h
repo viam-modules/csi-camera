@@ -7,14 +7,19 @@
 
 #include <gst/gst.h>
 #include <gst/app/gstappsink.h>
-#include <viam/sdk/components/camera/camera.hpp>
-#include <viam/api/component/camera/v1/camera.grpc.pb.h>
+
+#include <viam/sdk/components/camera.hpp>
+#include <viam/sdk/config/resource.hpp>
+#include <viam/sdk/resource/reconfigurable.hpp>
+
+// #include <viam/sdk/components/camera.hpp>
+// #include <viam/api/component/camera/v1/camera.grpc.pb.h>
 
 #include "utils.h"
 
 using namespace viam::sdk;
 
-class CSICamera : public Camera {
+class CSICamera : public Camera, public Reconfigurable {
 private:
     // Device
     device_type device;
@@ -36,22 +41,30 @@ private:
 
 public:
     // Module
-    explicit CSICamera(const std::string name, const AttributeMap attrs);
+    // explicit CSICamera(const std::string name, const AttributeMap attrs);
+    explicit CSICamera(const std::string name, const ProtoStruct& attrs);
     ~CSICamera();
-    void init(const AttributeMap attrs);
+    // void init(const AttributeMap attrs);
+    void init(const ProtoStruct& attrs);
     void init_csi(const std::string pipeline_args);
-    void validate_attrs(const AttributeMap attrs);
+    // void validate_attrs(const AttributeMap attrs);
+    void validate_attrs(const ProtoStruct& attrs);
     template <typename T>
-    void set_attr(const AttributeMap& attrs, const std::string& name, T CSICamera::* member, T de);
+    // void set_attr(const AttributeMap& attrs, const std::string& name, T CSICamera::* member, T de);
+    void set_attr(const ProtoStruct& attrs, const std::string& name, T CSICamera::* member, T de);
 
     // Camera
     // overrides camera component interface
-    void reconfigure(const Dependencies deps, const ResourceConfig cfg) override;
-    raw_image get_image(const std::string mime_type, const AttributeMap& extra) override;
+    void reconfigure(const Dependencies& deps, const ResourceConfig& cfg) override;
+    // raw_image get_image(const std::string mime_type, const AttributeMap& extra) override;
+    raw_image get_image(const std::string mime_type, const ProtoStruct& extra) override;
     image_collection get_images() override;
-    AttributeMap do_command(const AttributeMap command) override;
-    point_cloud get_point_cloud(const std::string mime_type, const AttributeMap& extra) override;
-    std::vector<GeometryConfig> get_geometries(const AttributeMap& extra) override;
+    // AttributeMap do_command(const AttributeMap command) override;
+    ProtoStruct do_command(const ProtoStruct& command) override;
+    // point_cloud get_point_cloud(const std::string mime_type, const AttributeMap& extra) override;
+    point_cloud get_point_cloud(const std::string mime_type, const ProtoStruct& extra) override;
+    // std::vector<GeometryConfig> get_geometries(const AttributeMap& extra) override;
+    std::vector<GeometryConfig> get_geometries(const ProtoStruct& extra) override;
     properties get_properties() override;
 
     // GST 
