@@ -41,6 +41,3 @@ jobs:
 
       - name: Build viam-csi appimage
         run: make package
-
-      - name: Copy binary and appimage to bin folder
-        run: make bin
