@@ -13,9 +13,6 @@
 #include <viam/sdk/resource/reconfigurable.hpp>
 #include <viam/sdk/common/proto_value.hpp>
 
-// #include <viam/sdk/components/camera.hpp>
-// #include <viam/api/component/camera/v1/camera.grpc.pb.h>
-
 #include "utils.h"
 
 using namespace viam::sdk;

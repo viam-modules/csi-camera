@@ -23,7 +23,6 @@ CSICamera::~CSICamera() {
     stop_pipeline();
 }
 
-// void CSICamera::init(const AttributeMap attrs) {
 void CSICamera::init(const ProtoStruct& attrs) {
     // validate_attrs(attrs);
     auto pipeline_args = create_pipeline();
@@ -60,7 +59,6 @@ void CSICamera::set_attr(const ProtoStruct& attrs, const std::string& name, T CS
     }
 }
 
-// void CSICamera::reconfigure(const Dependencies deps, const ResourceConfig cfg) {
 void CSICamera::reconfigure(const Dependencies& deps, const ResourceConfig& cfg) {
     if (debug) {
         std::cout << "Reconfiguring CSI Camera module" << std::endl;
@@ -70,7 +68,6 @@ void CSICamera::reconfigure(const Dependencies& deps, const ResourceConfig& cfg)
     init(attrs);
 }
 
-// Camera::raw_image CSICamera::get_image(const std::string mime_type, const AttributeMap& extra) {
 Camera::raw_image CSICamera::get_image(const std::string mime_type, const ProtoStruct& extra) {
     if (debug) {
         std::cout << "hit get_image. expecting mime_type " << mime_type << std::endl;
@@ -100,7 +97,6 @@ Camera::image_collection CSICamera::get_images() {
     auto now = std::chrono::system_clock::now();
     auto duration_since_epoch = now.time_since_epoch();
     auto nanoseconds = std::chrono::duration_cast<std::chrono::nanoseconds>(duration_since_epoch);
-    // collection.metadata.captured_at = std::chrono::time_point<long long, std::chrono::nanoseconds>(nanoseconds);
     collection.metadata.captured_at = std::chrono::time_point<std::chrono::system_clock, std::chrono::nanoseconds>(nanoseconds);
 
     if (debug) {
