@@ -35,30 +35,29 @@ void CSICamera::init(const ProtoStruct& attrs) {
 
 // void CSICamera::validate_attrs(const AttributeMap attrs) {
 void CSICamera::validate_attrs(const ProtoStruct& attrs) {
-//     set_attr<int>(attrs, "width_px", &CSICamera::width_px, DEFAULT_INPUT_WIDTH);
-//     set_attr<int>(attrs, "height_px", &CSICamera::height_px, DEFAULT_INPUT_HEIGHT);
-//     set_attr<int>(attrs, "frame_rate", &CSICamera::frame_rate, DEFAULT_INPUT_FRAMERATE);
-//     set_attr<std::string>(attrs, "video_path", &CSICamera::video_path, DEFAULT_INPUT_SENSOR);
-//     set_attr<bool>(attrs, "debug", &CSICamera::debug, false);
+    set_attr<int>(attrs, "width_px", &CSICamera::width_px, DEFAULT_INPUT_WIDTH);
+    set_attr<int>(attrs, "height_px", &CSICamera::height_px, DEFAULT_INPUT_HEIGHT);
+    set_attr<int>(attrs, "frame_rate", &CSICamera::frame_rate, DEFAULT_INPUT_FRAMERATE);
+    set_attr<std::string>(attrs, "video_path", &CSICamera::video_path, DEFAULT_INPUT_SENSOR);
+    set_attr<bool>(attrs, "debug", &CSICamera::debug, false);
 }
 
 template <typename T>
-// void CSICamera::set_attr(const AttributeMap& attrs, const std::string& name, T CSICamera::* member, T de) {
 void CSICamera::set_attr(const ProtoStruct& attrs, const std::string& name, T CSICamera::* member, T de) {
-    // if (attrs->count(name) == 1) {
-    //     std::shared_ptr<ProtoType> proto = attrs->at(name);
-    //     auto val = proto->proto_value();
-
-    //     if constexpr (std::is_same<T, int>::value) {
-    //         this->*member = val.number_value();
-    //     } else if constexpr (std::is_same<T, std::string>::value) {
-    //         this->*member = va// l.string_value();
-    //     } else if constexpr (std::is_same<T, bool>::value) {
-    //         this->*member = val.bool_value();
-    //     }
-    // } else {
-    //     this->*member = de; // Set the default value if the attribute is not found
-    // }
+    if (attrs.count(name) == 1) {
+        const ProtoValue& val = attrs.at(name);
+        // TODO(seanp): Make sure that get_unchecked<T>() is safe/preferred
+        // way to retrieve raw values from ProtoValue
+        if constexpr (std::is_same<T, int>::value) {
+            this->*member = static_cast<int>(val.get_unchecked<double>());
+        } else if constexpr (std::is_same<T, std::string>::value) {
+            this->*member = val.get_unchecked<std::string>();
+        } else if constexpr (std::is_same<T, bool>::value) {
+            this->*member = val.get_unchecked<bool>();
+        }
+    } else {
+        this->*member = de; // Set the default value if the attribute is not found
+    }
 }
 
 // void CSICamera::reconfigure(const Dependencies deps, const ResourceConfig cfg) {
