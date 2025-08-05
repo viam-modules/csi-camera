@@ -8,3 +8,4 @@ etc/appimage-build
 *.swp
 **/.DS_Store
 gha-creds-*.json
+.vscode
