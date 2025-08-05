@@ -10,7 +10,6 @@
 
 using namespace viam::sdk;
 
-// CSICamera::CSICamera(const std::string name, const AttributeMap attrs) : Camera(std::move(name)) {
 CSICamera::CSICamera(const std::string name, const ProtoStruct& attrs) : Camera(std::move(name)) {
     device = get_device_type();
     std::cout << "Creating CSICamera with name: " << name << std::endl;
@@ -32,7 +31,6 @@ void CSICamera::init(const ProtoStruct& attrs) {
     init_csi(pipeline_args);
 }
 
-// void CSICamera::validate_attrs(const AttributeMap attrs) {
 void CSICamera::validate_attrs(const ProtoStruct& attrs) {
     set_attr<int>(attrs, "width_px", &CSICamera::width_px, DEFAULT_INPUT_WIDTH);
     set_attr<int>(attrs, "height_px", &CSICamera::height_px, DEFAULT_INPUT_HEIGHT);
