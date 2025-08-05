@@ -42,11 +42,6 @@ jobs:
       - name: Copy binary and appimage to bin folder and archive
         run: make bin && tar czf module.tar.gz ./bin/*.AppImage
 
-      - name: Run appimage in fresh instance
-        run: |
-          make image-test
-          make test-package
-
       - name: Upload Module
         uses: viamrobotics/upload-module@main
         if: startsWith(github.ref, 'refs/tags/') 

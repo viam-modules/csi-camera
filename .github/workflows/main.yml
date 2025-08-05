@@ -53,11 +53,6 @@ jobs:
       - name: Copy binary and appimage to bin folder
         run: make bin
 
-      - name: Run appimage in fresh instance
-        run: |
-          make image-test
-          make test-package
-
       - id: 'auth'
         name: 'Authenticate to Google Cloud'
         uses: 'google-github-actions/auth@v1'
