@@ -8,7 +8,7 @@ HUB_USER := viam-modules/csi-camera
 TEST_NAME := viam-csi-test
 DOCK_TAG := 0.0.1 # tag for mod/test images
 BASE_TAG := 0.0.4
-L4T_TAG := r36.4.0
+L4T_TAG := 35.4.1
 
 # Package
 PACK_NAME := viam-csi
