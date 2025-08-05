@@ -43,18 +43,18 @@ target_link_libraries(${PROJECT_NAME}
 install(TARGETS ${PROJECT_NAME} DESTINATION usr/local/bin)
 
 
-# # Test executable
-# add_executable(${PROJECT_NAME}_test test/test_csi_camera.cpp)
+# Test executable
+add_executable(${PROJECT_NAME}_test test/test_csi_camera.cpp)
 
-# target_link_libraries(${PROJECT_NAME}_test
-#         ${GSTREAMER_LIBRARIES}
-#         GTest::GTest
-#         GTest::Main
-#         viam-cpp-sdk::viamsdk
-# )
+target_link_libraries(${PROJECT_NAME}_test
+        ${GSTREAMER_LIBRARIES}
+        GTest::GTest
+        GTest::Main
+        viam-cpp-sdk::viamsdk
+)
 
-# # Add the test as a target
-# add_test(NAME ${PROJECT_NAME}_test COMMAND ${PROJECT_NAME}_test)
+# Add the test as a target
+add_test(NAME ${PROJECT_NAME}_test COMMAND ${PROJECT_NAME}_test)
 
 # # Perf executable
 # add_executable(${PROJECT_NAME}_perf test/perf_sdk.cpp)

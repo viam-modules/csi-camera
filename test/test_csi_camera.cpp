@@ -12,9 +12,9 @@ using namespace viam::sdk;
 TEST(CSICamera, CreateDefault) {
     gst_init(nullptr, nullptr);
 
-    // AttributeMap attrs = std::make_shared<std::unordered_map<std::string, std::shared_ptr<ProtoType>>>();
-    ProtoStruct attrs = std::make_shared<std::unordered_map<std::string, std::shared_ptr<ProtoType>>>();
-    attrs->insert(std::make_pair("debug", std::make_shared<ProtoType>(true)));
+    ProtoStruct attrs = std::unordered_map<std::string, ProtoValue>();
+
+    attrs.insert(std::make_pair("debug", ProtoValue(true)));
 
     CSICamera camera("test", attrs);
 
@@ -31,13 +31,12 @@ TEST(CSICamera, CreateDefault) {
 TEST(CSICamera, CreateCustom) {
     gst_init(nullptr, nullptr);
 
-    // AttributeMap attrs = std::make_shared<std::unordered_map<std::string, std::shared_ptr<ProtoType>>>();
-    ProtoStruct attrs = std::make_shared<std::unordered_map<std::string, std::shared_ptr<ProtoType>>>();
-    attrs->insert(std::make_pair("debug", std::make_shared<ProtoType>(true)));
-    attrs->insert(std::make_pair("width_px", std::make_shared<ProtoType>(640)));
-    attrs->insert(std::make_pair("height_px", std::make_shared<ProtoType>(480)));
-    attrs->insert(std::make_pair("frame_rate", std::make_shared<ProtoType>(60)));
-    attrs->insert(std::make_pair("video_path", std::make_shared<ProtoType>(std::string("1"))));
+    ProtoStruct attrs = std::unordered_map<std::string, ProtoValue>();
+    attrs.insert(std::make_pair("debug", ProtoValue(true)));
+    attrs.insert(std::make_pair("width_px", ProtoValue(640)));
+    attrs.insert(std::make_pair("height_px", ProtoValue(480)));
+    attrs.insert(std::make_pair("frame_rate", ProtoValue(60)));
+    attrs.insert(std::make_pair("video_path", ProtoValue(std::string("1"))));
 
     CSICamera camera("test", attrs);
 
@@ -54,8 +53,8 @@ TEST(CSICamera, CreateCustom) {
 TEST(CSICamera, StartStopPipeline) {
     gst_init(nullptr, nullptr);
 
-    AttributeMap attrs = std::make_shared<std::unordered_map<std::string, std::shared_ptr<ProtoType>>>();
-    attrs->insert(std::make_pair("debug", std::make_shared<ProtoType>(true)));
+    ProtoStruct attrs = std::unordered_map<std::string, ProtoValue>();
+    attrs.insert(std::make_pair("debug", ProtoValue(true)));
 
     CSICamera camera("test", attrs);
 
