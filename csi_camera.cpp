@@ -23,7 +23,7 @@ CSICamera::~CSICamera() {
 }
 
 void CSICamera::init(const ProtoStruct& attrs) {
-    // validate_attrs(attrs);
+    validate_attrs(attrs);
     auto pipeline_args = create_pipeline();
     if (debug) {
         std::cout << "pipeline_args: " << pipeline_args << std::endl;
