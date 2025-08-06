@@ -52,3 +52,4 @@ AppDir:
 
 AppImage:
   arch: aarch64
+  comp: gzip

@@ -27,3 +27,4 @@ AppDir:
     - usr/lib/aarch64-linux-gnu/gconv
 AppImage:
   arch: aarch64
+  comp: gzip
