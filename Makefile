@@ -46,8 +46,7 @@ package:
 	cd etc && \
 	PACK_NAME=$(PACK_NAME) \
 	PACK_TAG=$(PACK_TAG) \
-	appimage-builder \
-		--recipe $(RECIPE) \
+	appimage-builder --recipe $(RECIPE)
 
 # Removes all build and bin artifacts.
 clean:
