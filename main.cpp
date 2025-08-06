@@ -1,6 +1,7 @@
 #include <iostream>
 #include <gst/gst.h>
 
+#include <viam/sdk/common/instance.hpp>
 #include <viam/sdk/module/module.hpp>
 #include <viam/sdk/module/service.hpp>
 #include <viam/sdk/resource/resource.hpp>
@@ -22,6 +23,14 @@ int main(int argc, char *argv[]) {
     // Device type and params
     auto device = get_device_type();
     auto api_params = get_api_params(device);
+
+    std::cout << "Device type: " << device.name << std::endl;
+    std::cout << "API Namespace: " << api_params.api_namespace << std::endl;
+
+    // Every Viam C++ SDK program must have one and only one Instance object
+    // which is created before any other C++ SDK objects and stays alive until
+    // all Viam C++ SDK objects are destroyed.
+    Instance inst;
 
     auto module_registration = std::make_shared<ModelRegistration>(
     API::get<Camera>(),
