@@ -14,7 +14,7 @@ permissions:
 
 jobs:
   appimage:
-    name: Build/Test/Upload latest
+    name: Build latest
     runs-on: buildjet-2vcpu-ubuntu-2204-arm
     strategy:
       matrix:

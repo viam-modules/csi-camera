@@ -6,7 +6,6 @@ BIN_DIR := ./bin
 # Docker
 HUB_USER := viam-modules/csi-camera
 TEST_NAME := viam-csi-test
-DOCK_TAG := 0.0.1 # tag for mod/test images
 BASE_TAG := 0.0.4
 L4T_TAG := 35.4.1
 
@@ -122,55 +121,6 @@ image-base:
 		--memory=16g \
 		--build-arg L4T_TAG=$(L4T_TAG) \
 		-f $(BASE_CONFIG) ./
-
-# Builds docker image with viam-csi installed.
-image-mod:
-	docker build -t $(MOD_NAME):$(DOCK_TAG) \
-		--build-arg BASE_IMG=ghcr.io/$(HUB_USER)/$(BASE_NAME):$(BASE_TAG) \
-		-f $(MOD_CONFIG) ./
-
-# Builds raw L4T docker image with viam-csi appimage.
-image-test:
-	docker build -t $(TEST_NAME)-$(TARGET):$(DOCK_TAG) \
-		--no-cache \
-		--build-arg TEST_BASE=$(TEST_BASE) \
-		--build-arg PACK_TAG=$(PACK_TAG) \
-		-f ./etc/Dockerfile.test ./
-
-# Copies binary and appimage from container to host.
-bin-mod:
-	rm -rf $(BIN_DIR) || true && \
-	mkdir -p $(BIN_DIR) && \
-	docker stop viam-csi-bin || true && \
-	docker rm viam-csi-bin || true && \
-	docker run -d -it --name viam-csi-bin $(MOD_NAME):$(DOCK_TAG) && \
-	docker cp viam-csi-bin:/root/opt/src/csi-camera/build/viam-csi ./$(BIN_DIR) && \
-	docker cp viam-csi-bin:/root/opt/src/csi-camera/etc/viam-csi-$(PACK_TAG)-aarch64.AppImage ./$(BIN_DIR) && \
-	docker stop viam-csi-bin
-
-# SDK
-.PHONY: build-sdk
-build-sdk:
-	cd viam-cpp-sdk && \
-	mkdir -p build && \
-	cd build && \
-	cmake -DVIAMCPPSDK_USE_DYNAMIC_PROTOS=ON -DVIAMCPPSDK_OFFLINE_PROTO_GENERATION=ON .. -G Ninja && \
-	ninja -j 2 && \
-	sudo ninja install -j 2 && \
-	sudo cp -r ./install/* /usr/local/
-
-docker-sdk:
-	docker build -t viam-cpp-sdk -f ./viam-cpp-sdk/etc/docker/Dockerfile.ubuntu.focal ./ && \
-	docker run -it viam-cpp-sdk /bin/bash
-
-# Tests
-# Tests out package in a fresh container.
-test-package:
-	docker run \
-		-e PACK_FILE=$(PACK_NAME)-$(PACK_TAG)-aarch64.AppImage \
-		--device /dev/fuse \
-		--cap-add SYS_ADMIN \
-		$(TEST_NAME)-$(TARGET):$(DOCK_TAG)
 
 # Utils
 # Installs waveshare camera overrides on Jetson.

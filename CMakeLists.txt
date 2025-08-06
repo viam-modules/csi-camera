@@ -55,9 +55,3 @@ target_link_libraries(${PROJECT_NAME}_test
 
 # Add the test as a target
 add_test(NAME ${PROJECT_NAME}_test COMMAND ${PROJECT_NAME}_test)
-
-# # Perf executable
-# add_executable(${PROJECT_NAME}_perf test/perf_sdk.cpp)
-# target_link_libraries(${PROJECT_NAME}_perf
-#         viam-cpp-sdk::viamsdk
-# )
