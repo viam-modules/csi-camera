@@ -50,7 +50,7 @@ For local development, first install the dependencies for the [viam-cpp-sdk](htt
 ### Local Commands
 
 ```bash
-make build-sdk # Compile and install viam-cpp-sdk
+canon -profile=[csi-pi/csi-jetson] # Install dependencies
 ```
 
 ```bash
