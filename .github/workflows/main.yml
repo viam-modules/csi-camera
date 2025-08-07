@@ -6,15 +6,17 @@ on:
       - '*'
     paths-ignore:
       - 'README.md'
-      - 'docs/**'
-
-permissions:
-  id-token: write
-  contents: read
+      - 'docs/*'
+  pull_request:
+    branches:
+      - '*'
+    paths-ignore:
+      - 'README.md'
+      - 'docs/*'
 
 jobs:
   appimage:
-    name: Build latest
+    name: Build
     runs-on: buildjet-2vcpu-ubuntu-2204-arm
     strategy:
       matrix:
