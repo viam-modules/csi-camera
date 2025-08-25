@@ -85,7 +85,6 @@ Camera::image_collection CSICamera::get_images() {
         std::cout << "[get_images] start\n";
     }
     
-    // AttributeMap empty_extra;
     ProtoStruct empty_extra;
     raw_image image = get_image(DEFAULT_OUTPUT_MIMETYPE, empty_extra);
     image.source_name = ""; // empty string because we don't have multiple sources to differentiate
@@ -103,19 +102,16 @@ Camera::image_collection CSICamera::get_images() {
     return collection;
 }
 
-// AttributeMap CSICamera::do_command(const AttributeMap command) {
 ProtoStruct CSICamera::do_command(const ProtoStruct& command) {
     std::cerr << "do_command not implemented" << std::endl;
     return ProtoStruct{};
 }
 
-// Camera::point_cloud CSICamera::get_point_cloud(const std::string mime_type, const AttributeMap& extra) {
 Camera::point_cloud CSICamera::get_point_cloud(const std::string mime_type, const ProtoStruct& extra) {
     std::cerr << "get_point_cloud not implemented" << std::endl;
     return point_cloud{};
 }
 
-// std::vector<GeometryConfig> CSICamera::get_geometries(const AttributeMap& extra) {
 std::vector<GeometryConfig> CSICamera::get_geometries(const ProtoStruct& extra) {
     std::cerr << "get_geometries not implemented" << std::endl;
     return std::vector<GeometryConfig>{};
