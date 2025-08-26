@@ -75,7 +75,7 @@ dep:
 			libgstreamer-plugins-bad1.0-dev; \
 	elif [ "$(TARGET)" = "pi" ]; then \
 		apt-get install -y --no-install-recommends software-properties-common && \
-		apt-get -y install libcamera0 \
+		apt-get -y install \
 			libgstreamer1.0-dev \
 			libgstreamer1.0-0 \
 			gstreamer1.0-x \
