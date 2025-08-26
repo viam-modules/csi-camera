@@ -7,7 +7,6 @@ BIN_DIR := ./bin
 HUB_USER := viam-modules/csi-camera
 TEST_NAME := viam-csi-test
 BASE_TAG := 0.0.4
-L4T_TAG := 35.4.1
 
 # Package
 PACK_NAME := viam-csi
@@ -110,7 +109,6 @@ dep:
 image-base:
 	docker build -t $(BASE_NAME):$(BASE_TAG) \
 		--memory=16g \
-		--build-arg L4T_TAG=$(L4T_TAG) \
 		-f $(BASE_CONFIG) ./
 
 # Utils
