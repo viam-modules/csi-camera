@@ -10,7 +10,8 @@ BASE_TAG := 0.0.4
 L4T_TAG := 35.4.1
 
 # Package
-PACK_NAME := viam-csiPACK_TAG := latest
+PACK_NAME := viam-csi
+PACK_TAG := latest
 
 # CLI
 TARGET ?= pi # [jetson,pi]
