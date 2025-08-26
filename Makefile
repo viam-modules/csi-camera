@@ -16,18 +16,12 @@ PACK_TAG := latest
 # CLI
 TARGET ?= pi # [jetson,pi]
 ifeq ($(TARGET), jetson)
-	TEST_BASE=nvcr.io/nvidia/l4t-base:$(L4T_TAG)
 	BASE_NAME=viam-cpp-base-jetson
 	BASE_CONFIG=./etc/Dockerfile.base
-	MOD_NAME=viam-csi-module-jetson
-	MOD_CONFIG=./etc/Dockerfile.mod
 	RECIPE=./viam-csi-jetson-arm64.yml
 else ifeq ($(TARGET), pi)
-	TEST_BASE=debian:bookworm
 	BASE_NAME=viam-cpp-base-pi
 	BASE_CONFIG=./etc/Dockerfile.base.bullseye
-	MOD_NAME=viam-csi-module-pi
-	MOD_CONFIG=./etc/Dockerfile.mod.pi
 	RECIPE=./viam-csi-pi-arm64.yml
 endif
 
