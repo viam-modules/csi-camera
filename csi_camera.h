@@ -39,7 +39,6 @@ private:
 
 public:
     // Module
-    // explicit CSICamera(const std::string name, const AttributeMap attrs);
     explicit CSICamera(const std::string name, const ProtoStruct& attrs);
     ~CSICamera();
     void init(const ProtoStruct& attrs);
@@ -51,7 +50,6 @@ public:
     // Camera
     // overrides camera component interface
     void reconfigure(const Dependencies& deps, const ResourceConfig& cfg) override;
-    // raw_image get_image(const std::string mime_type, const AttributeMap& extra) override;
     raw_image get_image(const std::string mime_type, const ProtoStruct& extra) override;
     image_collection get_images() override;
     ProtoStruct do_command(const ProtoStruct& command) override;
