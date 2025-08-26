@@ -10,8 +10,7 @@ BASE_TAG := 0.0.4
 L4T_TAG := 35.4.1
 
 # Package
-PACK_NAME := viam-csi
-PACK_TAG := latest
+PACK_NAME := viam-csiPACK_TAG := latest
 
 # CLI
 TARGET ?= pi # [jetson,pi]
@@ -66,8 +65,8 @@ bin:
 dep:
 	export DEBIAN_FRONTEND=noninteractive && \
 	export TZ=America/New_York && \
+	apt-get update && \
 	if [ "$(TARGET)" = "jetson" ]; then \
-		apt-get update && \
 		apt-get -y install libgtest-dev && \
 		apt-get install -y gstreamer1.0-tools && \
 		apt-get install -y libgstreamer1.0-dev \
@@ -76,11 +75,6 @@ dep:
 			libgstreamer-plugins-bad1.0-dev; \
 	elif [ "$(TARGET)" = "pi" ]; then \
 		apt-get install -y --no-install-recommends software-properties-common && \
-		apt-add-repository 'deb http://archive.raspberrypi.org/debian/ bullseye main' && \
-		wget -qO - https://archive.raspberrypi.org/debian/raspberrypi.gpg.key | apt-key add - && \
-		sed -i '/bullseye-backports/d' /etc/apt/sources.list && \
-		echo "deb https://archive.debian.org/debian bullseye-backports main" > /etc/apt/sources.list.d/backports.list && \
-		apt-get -y update && \
 		apt-get -y install libcamera0 \
 			libgstreamer1.0-dev \
 			libgstreamer1.0-0 \
