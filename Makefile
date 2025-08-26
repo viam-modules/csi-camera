@@ -96,6 +96,7 @@ dep:
 		mkdir -p ${HOME}/opt/src && \
 		apt-get -y install meson && \
 		apt-get -y install libyaml-dev python3-yaml python3-ply python3-jinja2 && \
+		pip3 install --upgrade meson && \
 		cd ${HOME}/opt/src && \
 		git clone https://github.com/raspberrypi/libcamera.git && \
 		cd libcamera && \
