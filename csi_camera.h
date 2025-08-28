@@ -13,6 +13,7 @@
 #include <viam/sdk/resource/reconfigurable.hpp>
 #include <viam/sdk/common/proto_value.hpp>
 #include <viam/sdk/log/logging.hpp>
+#include <viam/sdk/common/exception.hpp>
 
 #include "utils.h"
 

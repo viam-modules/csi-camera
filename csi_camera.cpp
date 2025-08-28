@@ -65,6 +65,7 @@ Camera::raw_image CSICamera::get_image(const std::string mime_type, const ProtoS
     image.bytes = get_csi_image();
     if (image.bytes.empty()) {
         VIAM_SDK_LOG(error) << "no bytes retrieved from get_csi_image";
+        throw Exception("no bytes retrieved from get_csi_image");
     }
 
     return image;
@@ -72,6 +73,7 @@ Camera::raw_image CSICamera::get_image(const std::string mime_type, const ProtoS
 
 Camera::image_collection CSICamera::get_images() {
     ProtoStruct empty_extra;
+    // If image is not available, an exception will be thrown
     raw_image image = get_image(DEFAULT_OUTPUT_MIMETYPE, empty_extra);
     image.source_name = ""; // empty string because we don't have multiple sources to differentiate
 
@@ -116,7 +118,7 @@ void CSICamera::init_csi(const std::string pipeline_args) {
         std::cerr << "Failed to create the pipeline" << std::endl;
         g_print("Error: %s\n", error->message);
         g_error_free(error);
-        std::exit(EXIT_FAILURE);
+        throw Exception("Failed to create the pipeline");
     }
     
     // Fetch the appsink element
@@ -124,7 +126,7 @@ void CSICamera::init_csi(const std::string pipeline_args) {
     if (!appsink) {
         std::cerr << "Failed to get the appsink element" << std::endl;
         gst_object_unref(pipeline);
-        std::exit(EXIT_FAILURE);
+        throw Exception("Failed to get the appsink element");
     }
 
     // Start the pipeline
@@ -132,7 +134,7 @@ void CSICamera::init_csi(const std::string pipeline_args) {
         std::cerr << "Failed to start the pipeline" << std::endl;
         gst_object_unref(appsink);
         gst_object_unref(pipeline);
-        std::exit(EXIT_FAILURE);
+        throw Exception("Failed to start the pipeline");
     }
 
     // Handle async pipeline creation
@@ -144,7 +146,7 @@ void CSICamera::init_csi(const std::string pipeline_args) {
         std::cerr << "Failed to get the bus for the pipeline" << std::endl;
         gst_object_unref(appsink);
         gst_object_unref(pipeline);
-        std::exit(EXIT_FAILURE);
+        throw Exception("Failed to get the bus for the pipeline");
     }
 }
 
@@ -164,7 +166,7 @@ void CSICamera::wait_pipeline() {
 
         if (elapsed_time >= timeout_microseconds) {
             std::cerr << "Timeout: GST pipeline state change did not complete within timeout limit" << std::endl;
-            std::exit(EXIT_FAILURE);
+            throw Exception("Timeout: GST pipeline state change did not complete within timeout limit");
         }
 
         // Wait for a short duration to avoid busy waiting
@@ -175,12 +177,12 @@ void CSICamera::wait_pipeline() {
         std::cout << "GST pipeline state change success" << std::endl;
     } else if (ret == GST_STATE_CHANGE_FAILURE) {
         std::cerr << "GST pipeline failed to change state" << std::endl;
-        std::exit(EXIT_FAILURE);
-    } else if (ret = GST_STATE_CHANGE_NO_PREROLL) {
+        throw Exception("GST pipeline failed to change state");
+    } else if (ret == GST_STATE_CHANGE_NO_PREROLL) {
         std::cout << "GST pipeline changed but not enough data for preroll" << std::endl;
     } else {
         std::cerr << "GST pipeline failed to change state" << std::endl;
-        std::exit(EXIT_FAILURE);
+        throw Exception("GST pipeline failed to change state");
     }
 }
 
@@ -198,7 +200,7 @@ void CSICamera::stop_pipeline() {
         VIAM_SDK_LOG(error) << "Failed to stop the pipeline";
         gst_object_unref(appsink);
         gst_object_unref(pipeline);
-        std::exit(EXIT_FAILURE);
+        throw Exception("Failed to stop the pipeline");
     }
 
     // Wait for async state change
@@ -223,12 +225,12 @@ void CSICamera::catch_pipeline() {
             VIAM_SDK_LOG(error) << "Error: " << error->message;
             VIAM_SDK_LOG(error) << "Debug Info: " << debugInfo;
             stop_pipeline();
-            std::exit(EXIT_FAILURE);
+            throw Exception("Failed to stop the pipeline");
             break;
         case GST_MESSAGE_EOS:
             VIAM_SDK_LOG(info) << "End of stream received";
             stop_pipeline();
-            std::exit(EXIT_SUCCESS);
+            throw Exception("Failed to stop the pipeline");
             break;
         case GST_MESSAGE_WARNING:
             gst_message_parse_warning(msg, &error, &debugInfo);
