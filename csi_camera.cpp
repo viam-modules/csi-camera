@@ -103,8 +103,11 @@ std::vector<GeometryConfig> CSICamera::get_geometries(const ProtoStruct& extra) 
 }
 
 Camera::properties CSICamera::get_properties() {
-    VIAM_SDK_LOG(error) << "get_properties not implemented";
-    return properties{};
+    Camera::properties p{};
+    p.supports_pcd = false;
+    p.intrinsic_parameters.width_px = width_px;
+    p.intrinsic_parameters.height_px = height_px;
+    return p;
 }
 
 void CSICamera::init_csi(const std::string pipeline_args) {
