@@ -81,8 +81,7 @@ Once configured, check the [Logs tab](https://docs.viam.com/program/debug/) of y
       "attributes": {
         "width_px": 1920,
         "height_px": 1080,
-        "frame_rate": 30,
-        "debug": true
+        "frame_rate": 30
       },
       "depends_on": [],
       "name": "csicam_test",
@@ -137,8 +136,7 @@ On the new component panel, copy and paste the following attribute template into
 {
   "width_px": <int>,
   "height_px": <int>,
-  "frame_rate": <int>,
-  "debug": <bool>
+  "frame_rate": <int>
 }
 ```
 
@@ -158,7 +156,6 @@ The following attributes are available for `viam:camera:csi` cameras:
 | `width_px` | int | Optional | Width of the image this camera captures in pixels. <br> Default: `1920` |
 | `height_px` | int | Optional | Height of the image this camera captures in pixels. <br> Default: `1080` |
 | `frame_rate` | int | Optional | The image capture frame rate this camera should use. <br> Default: `30` |
-| `debug` | boolean | Optional | Whether or not you want debug input from this camera in your robot's logs. <br> Default: `false` |
 
 Once configured, check the [Logs tab](https://docs.viam.com/program/debug/) of your robot in the Viam app to make sure your camera has connected and no errors are being raised.
 
