@@ -7,6 +7,7 @@
 #include <viam/sdk/resource/resource.hpp>
 #include <viam/sdk/registry/registry.hpp>
 #include <viam/sdk/components/camera.hpp>
+#include <viam/sdk/log/logging.hpp>
 
 #include "constraints.h"
 #include "csi_camera.h"
@@ -15,7 +16,12 @@
 using namespace viam::sdk;
 
 int main(int argc, char *argv[]) {
-    std::cout << "### STARTING VIAM CSI CAMERA MODULE" << std::endl;
+    // Every Viam C++ SDK program must have one and only one Instance object
+    // which is created before any other C++ SDK objects and stays alive until
+    // all Viam C++ SDK objects are destroyed.
+    Instance inst;
+
+    VIAM_SDK_LOG(info) << "### STARTING VIAM CSI CAMERA MODULE";
 
     // Gstreamer initialization
     gst_init(&argc, &argv);
@@ -24,13 +30,8 @@ int main(int argc, char *argv[]) {
     auto device = get_device_type();
     auto api_params = get_api_params(device);
 
-    std::cout << "Device type: " << device.name << std::endl;
-    std::cout << "API Namespace: " << api_params.api_namespace << std::endl;
-
-    // Every Viam C++ SDK program must have one and only one Instance object
-    // which is created before any other C++ SDK objects and stays alive until
-    // all Viam C++ SDK objects are destroyed.
-    Instance inst;
+    VIAM_SDK_LOG(info) << "Device type: " << device.name;
+    VIAM_SDK_LOG(info) << "API Namespace: " << api_params.api_namespace;
 
     auto module_registration = std::make_shared<ModelRegistration>(
     API::get<Camera>(),

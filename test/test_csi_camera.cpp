@@ -14,11 +14,8 @@ TEST(CSICamera, CreateDefault) {
 
     ProtoStruct attrs = std::unordered_map<std::string, ProtoValue>();
 
-    attrs.insert(std::make_pair("debug", ProtoValue(true)));
-
     CSICamera camera("test", attrs);
 
-    EXPECT_EQ(camera.is_debug(), true);
     EXPECT_EQ(camera.get_width_px(), DEFAULT_INPUT_WIDTH);
     EXPECT_EQ(camera.get_height_px(), DEFAULT_INPUT_HEIGHT);
     EXPECT_EQ(camera.get_frame_rate(), DEFAULT_INPUT_FRAMERATE);
@@ -32,7 +29,6 @@ TEST(CSICamera, CreateCustom) {
     gst_init(nullptr, nullptr);
 
     ProtoStruct attrs = std::unordered_map<std::string, ProtoValue>();
-    attrs.insert(std::make_pair("debug", ProtoValue(true)));
     attrs.insert(std::make_pair("width_px", ProtoValue(640)));
     attrs.insert(std::make_pair("height_px", ProtoValue(480)));
     attrs.insert(std::make_pair("frame_rate", ProtoValue(60)));
@@ -40,7 +36,6 @@ TEST(CSICamera, CreateCustom) {
 
     CSICamera camera("test", attrs);
 
-    EXPECT_EQ(camera.is_debug(), true);
     EXPECT_EQ(camera.get_width_px(), 640);
     EXPECT_EQ(camera.get_height_px(), 480);
     EXPECT_EQ(camera.get_frame_rate(), 60);
@@ -54,7 +49,6 @@ TEST(CSICamera, StartStopPipeline) {
     gst_init(nullptr, nullptr);
 
     ProtoStruct attrs = std::unordered_map<std::string, ProtoValue>();
-    attrs.insert(std::make_pair("debug", ProtoValue(true)));
 
     CSICamera camera("test", attrs);
 

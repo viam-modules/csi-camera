@@ -12,6 +12,7 @@
 #include <viam/sdk/config/resource.hpp>
 #include <viam/sdk/resource/reconfigurable.hpp>
 #include <viam/sdk/common/proto_value.hpp>
+#include <viam/sdk/log/logging.hpp>
 
 #include "utils.h"
 
@@ -23,7 +24,6 @@ private:
     device_type device;
 
     // Camera
-    bool debug;
     int width_px = 0;
     int height_px = 0;
     int frame_rate = 0;
@@ -71,7 +71,6 @@ public:
 
     // Getters
     std::string get_name() const;
-    bool is_debug() const;
     int get_width_px() const;
     int get_height_px() const;
     int get_frame_rate() const;
