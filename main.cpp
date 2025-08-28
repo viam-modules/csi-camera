@@ -29,9 +29,7 @@ int main(int argc, char *argv[]) {
     // Device type and params
     auto device = get_device_type();
     auto api_params = get_api_params(device);
-
     VIAM_SDK_LOG(info) << "Device type: " << device.name;
-    VIAM_SDK_LOG(info) << "API Namespace: " << api_params.api_namespace;
 
     auto module_registration = std::make_shared<ModelRegistration>(
     API::get<Camera>(),
