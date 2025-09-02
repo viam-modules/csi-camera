@@ -126,14 +126,12 @@ void CSICamera::init_csi(const std::string pipeline_args) {
     // Fetch the appsink element
     appsink = gst_bin_get_by_name(GST_BIN(pipeline), "appsink0");
     if (!appsink) {
-        std::cerr << "Failed to get the appsink element" << std::endl;
         gst_object_unref(pipeline);
         throw Exception("Failed to get the appsink element");
     }
 
     // Start the pipeline
     if (gst_element_set_state(pipeline, GST_STATE_PLAYING) == GST_STATE_CHANGE_FAILURE) {
-        std::cerr << "Failed to start the pipeline" << std::endl;
         gst_object_unref(appsink);
         gst_object_unref(pipeline);
         throw Exception("Failed to start the pipeline");
@@ -145,7 +143,6 @@ void CSICamera::init_csi(const std::string pipeline_args) {
     // Run the main loop
     bus = gst_element_get_bus(pipeline);
     if (!bus) {
-        std::cerr << "Failed to get the bus for the pipeline" << std::endl;
         gst_object_unref(appsink);
         gst_object_unref(pipeline);
         throw Exception("Failed to get the bus for the pipeline");
