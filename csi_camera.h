@@ -46,7 +46,7 @@ class CSICamera : public Camera, public Reconfigurable {
     void init_csi(const std::string pipeline_args);
     void validate_attrs(const ProtoStruct& attrs);
     template <typename T>
-    void set_attr(const ProtoStruct& attrs, const std::string& name, T CSICamera::*member, T de);
+    void set_attr(const ProtoStruct& attrs, const std::string& name, T CSICamera::* member, T de);
 
     // Camera
     // overrides camera component interface
