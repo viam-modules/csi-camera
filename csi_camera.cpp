@@ -167,7 +167,6 @@ void CSICamera::wait_pipeline() {
         auto elapsed_time = std::chrono::duration_cast<std::chrono::microseconds>(current_time - start_time).count();
 
         if (elapsed_time >= timeout_microseconds) {
-            std::cerr << "Timeout: GST pipeline state change did not complete within timeout limit" << std::endl;
             throw Exception("Timeout: GST pipeline state change did not complete within timeout limit");
         }
 
@@ -224,15 +223,14 @@ void CSICamera::catch_pipeline() {
     switch (GST_MESSAGE_TYPE(msg)) {
         case GST_MESSAGE_ERROR:
             gst_message_parse_error(msg, &error, &debugInfo);
-            VIAM_SDK_LOG(error) << "Error: " << error->message;
-            VIAM_SDK_LOG(error) << "Debug Info: " << debugInfo;
+            VIAM_SDK_LOG(debug) << "Debug Info: " << debugInfo;
             stop_pipeline();
-            throw Exception("Failed to stop the pipeline");
+            throw Exception("GST pipeline error: " + std::string(error->message));
             break;
         case GST_MESSAGE_EOS:
-            VIAM_SDK_LOG(info) << "End of stream received";
+            VIAM_SDK_LOG(debug) << "End of stream received, stopping pipeline";
             stop_pipeline();
-            throw Exception("Failed to stop the pipeline");
+            throw Exception("End of stream received, pipeline stopped");
             break;
         case GST_MESSAGE_WARNING:
             gst_message_parse_warning(msg, &error, &debugInfo);
