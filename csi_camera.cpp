@@ -64,7 +64,6 @@ Camera::raw_image CSICamera::get_image(const std::string mime_type, const ProtoS
     image.mime_type = DEFAULT_OUTPUT_MIMETYPE;
     image.bytes = get_csi_image();
     if (image.bytes.empty()) {
-        VIAM_SDK_LOG(error) << "no bytes retrieved from get_csi_image";
         throw Exception("no bytes retrieved from get_csi_image");
     }
 
