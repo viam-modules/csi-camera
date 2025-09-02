@@ -195,19 +195,22 @@ void CSICamera::stop_pipeline() {
 
     // Stop the pipeline
     if (gst_element_set_state(pipeline, GST_STATE_NULL) == GST_STATE_CHANGE_FAILURE) {
+        // Don't throw, continue cleanup
         VIAM_SDK_LOG(error) << "Failed to stop the pipeline";
-        gst_object_unref(appsink);
-        gst_object_unref(pipeline);
-        throw Exception("Failed to stop the pipeline");
     }
 
     // Wait for async state change
-    wait_pipeline();
+    try {
+        wait_pipeline();
+    } catch (const std::exception& e) {
+        // Don't throw, continue cleanup
+        VIAM_SDK_LOG(error) << "Exception during wait_pipeline: " << e.what();
+    }
 
     // Free resources
-    gst_object_unref(appsink);
-    gst_object_unref(pipeline);
-    gst_object_unref(bus);
+    if (appsink) gst_object_unref(appsink);
+    if (pipeline) gst_object_unref(pipeline);
+    if (bus) gst_object_unref(bus);
     appsink = nullptr;
     pipeline = nullptr;
     bus = nullptr;
@@ -245,10 +248,8 @@ void CSICamera::catch_pipeline() {
     }
 
     // Cleanup
-    if (error != nullptr)
-        g_error_free(error);
-    if (debugInfo != nullptr)
-        g_free(debugInfo);
+    if (error != nullptr) g_error_free(error);
+    if (debugInfo != nullptr) g_free(debugInfo);
 }
 
 std::vector<unsigned char> CSICamera::get_csi_image() {
