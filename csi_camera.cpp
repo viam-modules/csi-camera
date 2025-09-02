@@ -87,12 +87,12 @@ Camera::image_collection CSICamera::get_images() {
 }
 
 ProtoStruct CSICamera::do_command(const ProtoStruct& command) {
-    VIAM_SDK_LOG(error) << "do_command not implemented";
+    VIAM_SDK_LOG(warn) << "do_command not implemented";
     return ProtoStruct{};
 }
 
 Camera::point_cloud CSICamera::get_point_cloud(const std::string mime_type, const ProtoStruct& extra) {
-    VIAM_SDK_LOG(error) << "get_point_cloud not implemented";
+    VIAM_SDK_LOG(warn) << "get_point_cloud not implemented";
     return point_cloud{};
 }
 
