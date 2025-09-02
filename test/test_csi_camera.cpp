@@ -1,10 +1,10 @@
 #include <gtest/gtest.h>
-#include <viam/sdk/components/camera.hpp>
 #include <viam/sdk/common/proto_convert.hpp>
+#include <viam/sdk/components/camera.hpp>
 
+#include "../constraints.h"
 #include "../csi_camera.cpp"
 #include "../utils.cpp"
-#include "../constraints.h"
 
 using namespace viam::sdk;
 

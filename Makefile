@@ -41,6 +41,9 @@ package:
 	PACK_TAG=$(PACK_TAG) \
 	appimage-builder --recipe $(RECIPE)
 
+lint:
+	./etc/run-clang-format.sh
+
 # Removes all build and bin artifacts.
 clean:
 	rm -rf $(BUILD_DIR) | true && \
