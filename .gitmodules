@@ -1,3 +1,0 @@
-[submodule "viam-cpp-sdk"]
-	path = viam-cpp-sdk
-	url = git@github.com:viamrobotics/viam-cpp-sdk.git
