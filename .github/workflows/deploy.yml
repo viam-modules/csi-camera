@@ -8,10 +8,10 @@ jobs:
     strategy:
      matrix:
         include:
-          - container: ghcr.io/viam-modules/csi-camera/viam-cpp-base-jetson:0.0.5
+          - container: ghcr.io/viam-modules/csi-camera/viam-cpp-base-jetson:0.0.6
             TARGET: jetson
             META_PATH: meta.json
-          - container: ghcr.io/viam-modules/csi-camera/viam-cpp-base-pi:0.0.5
+          - container: ghcr.io/viam-modules/csi-camera/viam-cpp-base-pi:0.0.6
             TARGET: pi
             META_PATH: meta-pi.json
     container:
