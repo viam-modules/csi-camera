@@ -6,7 +6,7 @@ BIN_DIR := ./bin
 # Docker
 HUB_USER := viam-modules/csi-camera
 TEST_NAME := viam-csi-test
-BASE_TAG := 0.0.4
+BASE_TAG := 0.0.5
 
 # Package
 PACK_NAME := viam-csi
