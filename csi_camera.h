@@ -52,7 +52,7 @@ class CSICamera : public Camera, public Reconfigurable {
     // overrides camera component interface
     void reconfigure(const Dependencies& deps, const ResourceConfig& cfg) override;
     raw_image get_image(const std::string mime_type, const ProtoStruct& extra) override;
-    image_collection get_images() override;
+    image_collection get_images(std::vector<std::string> filter_source_names, const ProtoStruct &extra) override;
     ProtoStruct do_command(const ProtoStruct& command) override;
     point_cloud get_point_cloud(const std::string mime_type, const ProtoStruct& extra) override;
     std::vector<GeometryConfig> get_geometries(const ProtoStruct& extra) override;
