@@ -70,7 +70,9 @@ Camera::raw_image CSICamera::get_image(const std::string mime_type, const ProtoS
     return image;
 }
 
-Camera::image_collection CSICamera::get_images(std::vector<std::string> filter_source_names, const ProtoStruct& extra) {
+Camera::image_collection CSICamera::get_images(std::vector<std::string> /* filter_source_names */, const ProtoStruct& /* extra */) {
+    // filter_source_names and extra are unused because this camera provides a single image source
+    // and doesn't include any extra support for get_images
     ProtoStruct empty_extra;
     // If image is not available, an exception will be thrown
     raw_image image = get_image(DEFAULT_OUTPUT_MIMETYPE, empty_extra);
