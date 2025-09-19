@@ -18,9 +18,9 @@ ___
 
 ### Requirements
 
-The `csi-cam` module is distributed as an AppImage. AppImages require FUSE version 2 to run. See [FUSE troubleshooting](https://docs.viam.com/appendix/troubleshooting/#appimages-require-fuse-to-run) for instructions on installing FUSE 2 on your system if it is not already installed.
+The `csi-cam` module is distributed as an AppImage. AppImages require FUSE version 2 to run. See [FUSE troubleshooting](https://github.com/AppImage/AppImageKit/wiki/FUSE) for instructions on installing FUSE 2 on your system if it is not already installed. On Debian and Ubuntu systems, the libfuse2 library is automatically installed before the module starts.
 
-Currently, the `csi-cam` module supports the Linux platform only.
+Currently, the `csi-cam` module supports the Linux arm64 platforms only.
 
 ### Usage
 
@@ -40,15 +40,9 @@ On the new component panel, copy and paste the following attribute template into
   "width_px": <int>,
   "height_px": <int>,
   "frame_rate": <int>,
+  "video_path": <string>
 }
 ```
-
-> [!NOTE]  
-> For more information, see [Configure a Robot](https://docs.viam.com/manage/configuration/).
-
-Edit the attributes as applicable and save your config.
-In the **Control** tab of the [Viam app](https://app.viam.com/), you can now view the camera feed. 
-If you do not see anything, check the logs tab for errors.
 
 #### Attributes
 
@@ -91,23 +85,6 @@ Once configured, check the [Logs tab](https://docs.viam.com/program/debug/) of y
   ]
 }
 ```
-___
-
-## Latest Version Installation
-
-Install the latest development version of the module on your device with these commands:
-
-### For Jetson Devices
-```bash
-sudo wget http://packages.viam.com/apps/csi-camera/jetson/viam-csi-latest-aarch64.AppImage -O /usr/local/bin/csi-cam
-```
-
-### For Raspberry Pi Devices
-```bash
-sudo wget http://packages.viam.com/apps/csi-camera/pi/viam-csi-latest-aarch64.AppImage -O /usr/local/bin/csi-cam
-```
-
-See [local-app-config.json](./etc/local-app-config.json) for how to configure with local csi-cam appimage.
 ___
 
 ### Develop

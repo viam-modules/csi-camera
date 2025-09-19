@@ -2,14 +2,14 @@
   "module_id": "viam:csi-cam-pi",
   "visibility": "public",
   "url": "https://github.com/viam-modules/csi-camera/",
-  "description": "Module for CSI camera",
+  "description": "Module for CSI camera on the Raspberry Pi",
   "models": [
     {
       "api": "rdk:component:camera",
       "model": "viam:camera:csi-pi",
       "markdown_link": "README.md#configure-your-csi-camera",
-      "description" :"A module for the CSI camera"
+      "short_description" :"A module for the CSI camera on the Raspberry Pi"
     }
   ],
-  "entrypoint": "./bin/viam-csi-latest-aarch64.AppImage"
+  "entrypoint": "run.sh"
 }

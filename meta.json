@@ -2,14 +2,14 @@
   "module_id": "viam:csi-cam",
   "visibility": "public",
   "url": "https://github.com/viamrobotics/csi-camera/",
-  "description": "Module for CSI camera",
+  "description": "Module for CSI camera on the Nvidia Jetson",
   "models": [
     {
       "api": "rdk:component:camera",
       "model": "viam:camera:csi",
       "markdown_link": "README.md#configure-your-csi-camera",
-      "description" :"A module for the CSI camera"
+      "short_description" :"A module for the CSI camera on the Nvidia Jetson"
     }
   ],
-  "entrypoint": "./bin/viam-csi-latest-aarch64.AppImage"
+  "entrypoint": "run.sh"
 }
