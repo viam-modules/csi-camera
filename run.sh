@@ -16,4 +16,4 @@ else
     echo "Unable to determine the operating system, unable to automatically install libfuse2. Make sure that libfuse2 is installed. See https://github.com/AppImage/AppImageKit/wiki/FUSE."
 fi
 
-exec ./bin/viam-csi-latest-aarch64.AppImage
+exec ./bin/viam-csi-latest-aarch64.AppImage "$@"

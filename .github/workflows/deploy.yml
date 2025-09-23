@@ -40,14 +40,14 @@ jobs:
         run: make package
 
       - name: Copy binary and appimage to bin folder and archive
-        run: make bin && tar czf module.tar.gz ./bin/*.AppImage
+        run: make bin && tar czf module.tar.gz run.sh ./bin/*.AppImage
 
       - name: Upload Module
         uses: viamrobotics/upload-module@main
         if: startsWith(github.ref, 'refs/tags/') 
         with:
           meta-path: ${{ env.META_PATH }}
-          module-path: bin/viam-csi-latest-aarch64.AppImage
+          module-path: module.tar.gz
           platform: linux/arm64
           version: ${{ github.ref_name }}
           key-id: ${{ secrets.viam_key_id }}
