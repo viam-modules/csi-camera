@@ -39,16 +39,16 @@ AppDir:
     - /lib/aarch64-linux-gnu/libpthread*
     - /usr/lib/aarch64-linux-gnu/gstreamer-1.0/*
     - /usr/lib/aarch64-linux-gnu/libcamera*
-    - /usr/lib/aarch64-linux-gnu/libcamera/*
+    - /usr/lib/aarch64-linux-gnu/libcamera/**
     - /usr/lib/libgst*
-    - /usr/share/libcamera/*
+    - /usr/share/libcamera/**
     exclude:
     - usr/share/doc
     - usr/share/man
   runtime:
     path_mappings:
-      - /usr/lib/aarch64-linux-gnu/libcamera/:$APPDIR/usr/lib/aarch64-linux-gnu/libcamera/ 
-      - /usr/share/libcamera/:$APPDIR/usr/share/libcamera/
+      - /usr/lib/aarch64-linux-gnu/libcamera:$APPDIR/usr/lib/aarch64-linux-gnu/libcamera
+      - /usr/share/libcamera:$APPDIR/usr/share/libcamera
 
 AppImage:
   arch: aarch64
