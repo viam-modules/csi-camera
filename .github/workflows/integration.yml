@@ -44,6 +44,7 @@ jobs:
           workflow: build.yml
           branch: ${{ github.head_ref || github.ref_name }}
           workflow_conclusion: success
+          allow_forks: true
           name: viam-csi-${{ matrix.TARGET }}-appimage
           path: ./etc
 
