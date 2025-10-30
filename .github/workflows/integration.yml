@@ -3,10 +3,8 @@ name: Integration Tests
 on:
   workflow_run:
     workflows: ["Build Latest"]
-    types:
-      - completed
-    branches:
-      - '*'
+    types: [completed]
+    branches: ['*']
 
 jobs:
   integration-test:
@@ -26,8 +24,8 @@ jobs:
       - name: Check out code
         uses: actions/checkout@v3
 
-      - name: Download AppImage artifact from build workflow
-        uses: dawidd6/action-download-artifact@v2
+      - name: Download AppImage artifact
+        uses: dawidd6/action-download-artifact@v6
         with:
           workflow: build.yml
           name: viam-csi-${{ matrix.TARGET }}-appimage
