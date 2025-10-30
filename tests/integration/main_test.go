@@ -14,11 +14,15 @@ import (
 	"go.viam.com/rdk/logging"
 	"go.viam.com/rdk/robot"
 	robotimpl "go.viam.com/rdk/robot/impl"
+	"go.viam.com/rdk/utils"
+	"go.viam.com/test"
 )
 
 const (
-	componentName = "csi-cam-1"
-	modulePath    = "../../etc"
+	componentName       = "csi-cam-1"
+	modulePath          = "../../etc"
+	testTimeoutDuration = 5 * time.Second
+	testTickDuration    = 100 * time.Millisecond
 )
 
 func setUpViamServer(ctx context.Context, configString string, loggerName string, _ *testing.T) (robot.Robot, error) {
@@ -49,7 +53,7 @@ func TestCameraServer(t *testing.T) {
 
 	// Try to find extracted AppImage first (CI), then fall back to AppImage (local)
 	etcPath := filepath.Join(cwd, modulePath)
-	absModulePath := filepath.Join(etcPath, "squashfs-root", "AppRun")
+	absModulePath := filepath.Join(etcPath, "AppDir", "AppRun")
 
 	// Check if extracted version exists (CI)
 	if _, err := os.Stat(absModulePath); os.IsNotExist(err) {
@@ -98,9 +102,52 @@ func TestCameraServer(t *testing.T) {
 		}
 		defer cam.Close(timeoutCtx)
 
-		t.Run("Camera streaming", func(t *testing.T) {
-			// Test camera streaming functionality
+		t.Run("GetImage", func(t *testing.T) {
+			timeout := time.After(testTimeoutDuration)
+			tick := time.Tick(testTickDuration)
+			for {
+				select {
+				case <-timeout:
+					t.Fatal("timed out waiting for Get image method (one image)")
+				case <-tick:
+					img, err := camera.DecodeImageFromCamera(timeoutCtx, utils.MimeTypeJPEG, nil, cam)
+					if err != nil {
+						continue
+					}
+					test.That(t, img, test.ShouldNotBeNil)
+					return
+				}
+			}
+		})
+
+		t.Run("GetImages", func(t *testing.T) {
+			timeout := time.After(testTimeoutDuration)
+			tick := time.Tick(testTickDuration)
+			for {
+				select {
+				case <-timeout:
+					t.Fatal("timed out waiting for Get images method (multiple images)")
+				case <-tick:
+					images, metadata, err := cam.Images(timeoutCtx)
+					if err != nil {
+						continue
+					}
+					test.That(t, images, test.ShouldNotBeNil)
+					test.That(t, len(images), test.ShouldBeGreaterThan, 0)
+					test.That(t, metadata, test.ShouldNotBeNil)
+					return
+				}
+			}
+		})
+
+		t.Run("GetProperties", func(t *testing.T) {
+			props, err := cam.Properties(timeoutCtx)
+			if err != nil {
+				t.Fatalf("Failed to get camera properties: %v", err)
+			}
+			test.That(t, props, test.ShouldNotBeNil)
 		})
 	})
 	logger.Info("Completed CSI Camera Integration Tests")
+
 }
