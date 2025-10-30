@@ -37,4 +37,5 @@
 #define PI_OUTPUT_ENCODER "jpegenc"
 
 // Integration Tests
-inline const std::string TEST_GST_PIPELINE = "videotestsrc ! video/x-raw ! videoconvert ! jpegenc ! image/jpeg ! appsink name=appsink0 sync=false max-buffers=1 drop=true";
+inline const std::string TEST_GST_PIPELINE =
+    "videotestsrc ! video/x-raw ! videoconvert ! jpegenc ! image/jpeg ! appsink name=appsink0 sync=false max-buffers=1 drop=true";

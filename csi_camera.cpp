@@ -37,7 +37,7 @@ void CSICamera::validate_attrs(const ProtoStruct& attrs) {
 }
 
 template <typename T>
-void CSICamera::set_attr(const ProtoStruct& attrs, const std::string& name, T CSICamera::* member, T de) {
+void CSICamera::set_attr(const ProtoStruct& attrs, const std::string& name, T CSICamera::*member, T de) {
     if (attrs.count(name) == 1) {
         const ProtoValue& val = attrs.at(name);
         if constexpr (std::is_same<T, int>::value) {
