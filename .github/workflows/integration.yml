@@ -1,0 +1,51 @@
+name: Integration Tests
+
+on:
+  workflow_run:
+    workflows: ["Build Latest"]
+    types:
+      - completed
+    branches:
+      - '*'
+
+jobs:
+  integration-test:
+    name: Integration Tests
+    runs-on: buildjet-2vcpu-ubuntu-2204-arm
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}
+    strategy:
+      matrix:
+        include:
+          - container: ghcr.io/viamrobotics/rdk-devenv:arm64-cache
+            TARGET: pi
+    container:
+      image: ${{ matrix.container }}
+      options: --platform linux/arm64
+
+    steps:
+      - name: Check out code
+        uses: actions/checkout@v3
+
+      - name: Download AppImage artifact from build workflow
+        uses: dawidd6/action-download-artifact@v2
+        with:
+          workflow: build.yml
+          name: viam-csi-${{ matrix.TARGET }}-appimage
+          path: ./etc
+          run_id: ${{ github.event.workflow_run.id }}
+
+      - name: Make AppImage executable
+        run: chmod +x ./etc/*.AppImage
+
+      - name: Extract AppImage
+        run: |
+          cd ./etc
+          ./*.AppImage --appimage-extract
+          chmod +x squashfs-root/AppRun
+
+      - name: Run integration tests
+        run: |
+          cd tests/integration
+          export VIAM_CSI_DEVICE=${{ matrix.TARGET }}
+          export VIAM_CSI_TEST_MODE=1
+          go test -v -timeout 10m

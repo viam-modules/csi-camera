@@ -4,6 +4,8 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"os"
+	"path/filepath"
 	"testing"
 	"time"
 
@@ -16,7 +18,7 @@ import (
 
 const (
 	componentName = "csi-cam-1"
-	absModulePath = "/host/etc/AppDir/AppRun"
+	modulePath    = "../../etc"
 )
 
 func setUpViamServer(ctx context.Context, configString string, loggerName string, _ *testing.T) (robot.Robot, error) {
@@ -38,6 +40,28 @@ func setUpViamServer(ctx context.Context, configString string, loggerName string
 func TestCameraServer(t *testing.T) {
 	logger := logging.NewLogger("csi-cam-tests")
 	logger.Info("Starting CSI Camera Integration Tests")
+
+	// Get absolute path to module
+	cwd, err := os.Getwd()
+	if err != nil {
+		t.Fatalf("Failed to get working directory: %v", err)
+	}
+
+	// Try to find extracted AppImage first (CI), then fall back to AppImage (local)
+	etcPath := filepath.Join(cwd, modulePath)
+	absModulePath := filepath.Join(etcPath, "squashfs-root", "AppRun")
+
+	// Check if extracted version exists (CI)
+	if _, err := os.Stat(absModulePath); os.IsNotExist(err) {
+		// Fall back to AppImage (local development)
+		files, err := filepath.Glob(filepath.Join(etcPath, "*.AppImage"))
+		if err != nil || len(files) == 0 {
+			t.Fatalf("Failed to find AppImage or extracted AppRun in %s: %v", etcPath, err)
+		}
+		absModulePath = files[0]
+	}
+
+	logger.Infof("Using module path: %s", absModulePath)
 
 	t.Run("With a configured robot", func(t *testing.T) {
 		timeoutCtx, cancel := context.WithTimeout(context.Background(), time.Minute)

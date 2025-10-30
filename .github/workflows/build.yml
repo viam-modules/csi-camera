@@ -51,3 +51,10 @@ jobs:
 
       - name: Build viam-csi appimage
         run: make package
+
+      - name: Upload AppImage artifact
+        uses: actions/upload-artifact@v3
+        with:
+          name: viam-csi-${{ matrix.TARGET }}-appimage
+          path: etc/*.AppImage
+          retention-days: 1
