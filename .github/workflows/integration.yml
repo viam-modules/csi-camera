@@ -17,8 +17,6 @@ on:
       - 'README.md'
       - 'docs/**'
 
-  
-
 permissions:
   contents: read
   actions: read
@@ -44,9 +42,10 @@ jobs:
         uses: dawidd6/action-download-artifact@v6
         with:
           workflow: build.yml
+          branch: ${{ github.head_ref || github.ref_name }}
+          workflow_conclusion: success
           name: viam-csi-${{ matrix.TARGET }}-appimage
           path: ./etc
-          run_id: ${{ github.event.workflow_run.id }}
 
       - name: Make AppImage executable
         run: chmod +x ./etc/*.AppImage
