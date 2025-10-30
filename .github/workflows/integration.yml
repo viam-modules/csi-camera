@@ -4,10 +4,10 @@ on:
   workflow_run:
     workflows: ["Build Latest"]
     types: [completed]
-    branches: ['*']
-  pull_request:
-    branches:
-      - '*'
+
+permissions:
+  contents: read
+  actions: read
 
 jobs:
   integration-test:
