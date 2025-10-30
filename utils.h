@@ -7,7 +7,7 @@
 #define DEVICE_PATH "/proc/device-tree/model"
 
 struct device_type {
-    enum type { unknown, jetson, pi };
+    enum type { unknown, jetson, pi, test };
     type value;
     std::string name;
 

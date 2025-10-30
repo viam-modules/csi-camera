@@ -4,6 +4,21 @@
 #include "utils.h"
 
 device_type get_device_type() {
+    // Check for environment variable override
+    const char* env_device = std::getenv("VIAM_CSI_DEVICE");
+    if (env_device != nullptr) {
+        std::string device_str(env_device);
+        std::transform(device_str.begin(), device_str.end(), device_str.begin(), ::tolower);
+
+        if (device_str == "jetson") {
+            return device_type(device_type::jetson, "Jetson");
+        } else if (device_str == "pi") {
+            return device_type(device_type::pi, "Raspberry Pi");
+        } else if (device_str == "test") {
+            return device_type(device_type::test, "Test");
+        }
+    }
+
     std::ifstream device_name(DEVICE_PATH);
     if (device_name.is_open()) {
         std::string line;
@@ -37,6 +52,12 @@ device_params get_device_params(device_type device) {
                                  .input_format = PI_INPUT_FORMAT,
                                  .video_converter = PI_VIDEO_CONVERTER,
                                  .output_encoder = PI_OUTPUT_ENCODER};
+        case device_type::test:
+            // Return empty params for test mode - pipeline will be overridden
+            return device_params{.input_source = "",
+                                 .input_format = "",
+                                 .video_converter = "",
+                                 .output_encoder = ""};
         default:
             return device_params{.input_source = DEFAULT_INPUT_SOURCE,
                                  .input_format = DEFAULT_INPUT_FORMAT,

@@ -283,6 +283,12 @@ std::vector<unsigned char> CSICamera::get_csi_image() {
 }
 
 std::string CSICamera::create_pipeline() const {
+    const char* test_mode = std::getenv("VIAM_CSI_TEST_MODE");
+    if (test_mode != nullptr && std::string(test_mode) == "1") {
+        VIAM_SDK_LOG(warn) << "CI Test mode enabled";
+        return TEST_GST_PIPELINE;
+    }
+
     auto device_params = get_device_params(device);
     std::string input_sensor = (device.value == device_type::jetson) ? (" sensor-id=" + video_path) : "";
 
