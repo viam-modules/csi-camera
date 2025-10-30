@@ -53,7 +53,7 @@ jobs:
         run: make package
 
       - name: Upload AppImage artifact
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: viam-csi-${{ matrix.TARGET }}-appimage
           path: etc/*.AppImage
