@@ -53,7 +53,7 @@ func TestCameraServer(t *testing.T) {
 
 	// Try to find extracted AppImage first (CI), then fall back to AppImage (local)
 	etcPath := filepath.Join(cwd, modulePath)
-	absModulePath := filepath.Join(etcPath, "AppDir", "AppRun")
+	absModulePath := filepath.Join(etcPath, "squashfs-root", "AppRun")
 
 	// Check if extracted version exists (CI)
 	if _, err := os.Stat(absModulePath); os.IsNotExist(err) {
