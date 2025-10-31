@@ -47,9 +47,7 @@ func TestCameraServer(t *testing.T) {
 
 	// Get absolute path to module
 	cwd, err := os.Getwd()
-	if err != nil {
-		t.Fatalf("Failed to get working directory: %v", err)
-	}
+	test.That(t, err, test.ShouldBeNil)
 
 	// Try to find extracted AppImage first (CI), then fall back to AppImage (local)
 	etcPath := filepath.Join(cwd, modulePath)
@@ -64,7 +62,6 @@ func TestCameraServer(t *testing.T) {
 		}
 		absModulePath = files[0]
 	}
-
 	logger.Infof("Using module path: %s", absModulePath)
 
 	t.Run("With a configured robot", func(t *testing.T) {
@@ -91,15 +88,13 @@ func TestCameraServer(t *testing.T) {
 			}
 			`, componentName, absModulePath)
 		robot, err := setUpViamServer(context.Background(), configString, "csi-cam-robot", t)
-		if err != nil {
-			t.Fatalf("Failed to set up Viam server: %v", err)
-		}
+		test.That(t, err, test.ShouldBeNil)
+		test.That(t, robot, test.ShouldNotBeNil)
 		defer robot.Close(timeoutCtx)
 
 		cam, err := camera.FromRobot(robot, componentName)
-		if err != nil {
-			t.Fatalf("Failed to get camera from robot: %v", err)
-		}
+		test.That(t, err, test.ShouldBeNil)
+		test.That(t, cam, test.ShouldNotBeNil)
 		defer cam.Close(timeoutCtx)
 
 		t.Run("GetImage", func(t *testing.T) {
@@ -149,5 +144,4 @@ func TestCameraServer(t *testing.T) {
 		})
 	})
 	logger.Info("Completed CSI Camera Integration Tests")
-
 }
