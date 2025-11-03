@@ -1,9 +1,9 @@
 name: Integration Tests
 
 on:
-#   workflow_run:
-#     workflows: ["Build Latest"]
-#     types: [completed]
+  workflow_run:
+    workflows: ["Build Latest"]
+    types: [completed]
   push:
     branches: 
       - '*'
@@ -25,6 +25,7 @@ jobs:
   integration-test:
     name: Integration Tests
     runs-on: buildjet-2vcpu-ubuntu-2204-arm
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}
     strategy:
       matrix:
         include:
