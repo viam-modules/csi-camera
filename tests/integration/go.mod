@@ -4,7 +4,10 @@ go 1.23.8
 
 toolchain go1.23.10
 
-require go.viam.com/rdk v0.83.0
+require (
+	go.viam.com/rdk v0.83.0
+	go.viam.com/test v1.2.4
+)
 
 require (
 	cloud.google.com/go v0.115.1 // indirect
@@ -58,7 +61,7 @@ require (
 	github.com/go-logr/stdr v1.2.2 // indirect
 	github.com/go-nlopt/nlopt v0.0.0-20230219125344-443d3362dcb5 // indirect
 	github.com/go-pdf/fpdf v0.6.0 // indirect
-	github.com/go-viper/mapstructure/v2 v2.1.0 // indirect
+	github.com/go-viper/mapstructure/v2 v2.4.0 // indirect
 	github.com/goccy/go-graphviz v0.1.3 // indirect
 	github.com/goccy/go-json v0.10.2 // indirect
 	github.com/gogo/protobuf v1.3.2 // indirect
@@ -156,7 +159,6 @@ require (
 	go.uber.org/multierr v1.11.0 // indirect
 	go.uber.org/zap v1.27.0 // indirect
 	go.viam.com/api v0.1.452 // indirect
-	go.viam.com/test v1.2.4 // indirect
 	go.viam.com/utils v0.1.149 // indirect
 	go4.org/unsafe/assume-no-moving-gc v0.0.0-20230525183740-e7c30c78aeb2 // indirect
 	goji.io v2.0.2+incompatible // indirect
