@@ -21,8 +21,9 @@ jobs:
     strategy:
       matrix:
         include:
-          - container: ghcr.io/viam-modules/csi-camera/viam-cpp-base-pi:0.0.6
-            TARGET: pi
+          - container: ghcr.io/viam-modules/csi-camera/viam-cpp-base-jetson:0.0.6
+            TARGET: jetson
+
     container:
       image: ${{ matrix.container }}
       options: --platform linux/arm64
@@ -30,6 +31,11 @@ jobs:
     steps:
       - name: Check out code
         uses: actions/checkout@v3
+
+      - name: Set environment variables
+        run: |
+          echo "TARGET=${{ matrix.TARGET }}" >> $GITHUB_ENV
+          echo "META_PATH=${{ matrix.META_PATH }}" >> $GITHUB_ENV
 
       - name: Install module dependencies
         run: make dep
