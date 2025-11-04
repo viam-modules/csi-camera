@@ -1,7 +1,7 @@
 #include <gtest/gtest.h>
+#include <viam/sdk/common/instance.hpp>
 #include <viam/sdk/common/proto_convert.hpp>
 #include <viam/sdk/components/camera.hpp>
-#include <viam/sdk/common/instance.hpp>
 
 #include "../../constraints.h"
 #include "../../csi_camera.cpp"
