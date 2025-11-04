@@ -1,23 +1,27 @@
 name: Unit Tests
 
 on:
-  workflow_run:
-    workflows: ["Build Latest"]
-    types: [completed]
-
-permissions:
-  contents: read
-  actions: read
+  push:
+    branches:
+      - '*'
+    paths-ignore:
+      - 'README.md'
+      - 'docs/**'
+  pull_request:
+    branches:
+      - '*'
+    paths-ignore:
+      - 'README.md'
+      - 'docs/**'
 
 jobs:
   integration-test:
     name: Unit Tests
     runs-on: buildjet-2vcpu-ubuntu-2204-arm
-    if: ${{ github.event.workflow_run.conclusion == 'success' }}
     strategy:
       matrix:
         include:
-          - container: ghcr.io/viamrobotics/rdk-devenv:arm64-cache
+          - container: ghcr.io/viam-modules/csi-camera/viam-cpp-base-pi:0.0.6
             TARGET: pi
     container:
       image: ${{ matrix.container }}
@@ -27,18 +31,11 @@ jobs:
       - name: Check out code
         uses: actions/checkout@v3
 
-      - name: Download AppImage artifact
-        uses: dawidd6/action-download-artifact@v6
-        with:
-          workflow: build.yml
-          branch: ${{ github.head_ref || github.ref_name }}
-          workflow_conclusion: success
-          allow_forks: true
-          name: viam-csi-${{ matrix.TARGET }}-appimage
-          path: ./etc
+      - name: Install module dependencies
+        run: make dep
 
-      - name: Make AppImage executable
-        run: chmod +x ./etc/*.AppImage
+      - name: Build viam-csi binary
+        run: make build
 
       - name: Extract AppImage
         run: |
