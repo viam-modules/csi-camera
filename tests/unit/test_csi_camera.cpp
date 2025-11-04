@@ -71,8 +71,6 @@ TEST(CSICamera, StartStopPipeline) {
 
     camera.stop_pipeline();
 
-    pipeline = camera.get_pipeline();
-    appsink = camera.get_appsink();
-    EXPECT_EQ(GST_STATE(pipeline), GST_STATE_NULL);
-    EXPECT_EQ(GST_STATE(appsink), GST_STATE_NULL);
+    EXPECT_EQ(camera.get_pipeline(), nullptr);
+    EXPECT_EQ(camera.get_appsink(), nullptr);
 }
