@@ -43,12 +43,6 @@ jobs:
       - name: Build viam-csi binary
         run: make build
 
-      - name: Extract AppImage
-        run: |
-          cd ./etc
-          ./*.AppImage --appimage-extract
-          chmod +x squashfs-root/AppRun
-
       - name: Run unit tests
         run: |
           cd tests/unit
