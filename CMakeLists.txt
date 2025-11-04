@@ -44,7 +44,7 @@ install(TARGETS ${PROJECT_NAME} DESTINATION usr/local/bin)
 
 
 # Test executable
-add_executable(${PROJECT_NAME}_test test/test_csi_camera.cpp)
+add_executable(${PROJECT_NAME}_test tests/unit/test_csi_camera.cpp)
 
 target_link_libraries(${PROJECT_NAME}_test
         ${GSTREAMER_LIBRARIES}

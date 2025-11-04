@@ -9,3 +9,5 @@ etc/appimage-build
 **/.DS_Store
 gha-creds-*.json
 .vscode
+*Testing
+*squashfs-root*

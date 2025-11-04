@@ -1,15 +1,19 @@
 #include <gtest/gtest.h>
 #include <viam/sdk/common/proto_convert.hpp>
 #include <viam/sdk/components/camera.hpp>
+#include <viam/sdk/common/instance.hpp>
 
-#include "../constraints.h"
-#include "../csi_camera.cpp"
-#include "../utils.cpp"
+#include "../../constraints.h"
+#include "../../csi_camera.cpp"
+#include "../../utils.cpp"
 
 using namespace viam::sdk;
 
 // Test that the camera can be created with default values
 TEST(CSICamera, CreateDefault) {
+    // Create an Instance to satisfy SDK requirements
+    Instance inst;
+    // GStreamer initialization
     gst_init(nullptr, nullptr);
 
     ProtoStruct attrs = std::unordered_map<std::string, ProtoValue>();
