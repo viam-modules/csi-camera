@@ -1,5 +1,5 @@
-#include <cstdlib>
 #include <gtest/gtest.h>
+#include <cstdlib>
 #include <viam/sdk/common/instance.hpp>
 #include <viam/sdk/common/proto_convert.hpp>
 #include <viam/sdk/components/camera.hpp>
@@ -10,13 +10,13 @@
 
 using namespace viam::sdk;
 
+// One-time runtime bootstrap to initialize Viam SDK Instance and GStreamer
 static void ensure_runtime() {
     static bool inited = false;
-    if (inited) return;
+    if (inited)
+        return;
     static Instance inst;
     gst_init(nullptr, nullptr);
-    setenv("VIAM_CSI_TEST_MODE", "1", 1);
-    setenv("VIAM_CSI_DEVICE", "test", 1);
     inited = true;
 }
 
