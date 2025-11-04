@@ -4,18 +4,6 @@ on:
   workflow_run:
     workflows: ["Build Latest"]
     types: [completed]
-  push:
-    branches: 
-      - '*'
-    paths-ignore:
-      - 'README.md'
-      - 'docs/**'
-  pull_request:
-    branches:
-      - '*'
-    paths-ignore:
-      - 'README.md'
-      - 'docs/**'
 
 permissions:
   contents: read
