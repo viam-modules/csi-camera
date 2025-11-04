@@ -51,4 +51,4 @@ jobs:
           cd tests/integration
           export VIAM_CSI_DEVICE=${{ matrix.TARGET }}
           export VIAM_CSI_TEST_MODE=1
-          ctest --test-dir build
+          ctest --test-dir build --rerun-failed --output-on-failure -VV

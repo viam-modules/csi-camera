@@ -1,3 +1,4 @@
+#include <cstdlib>
 #include <gtest/gtest.h>
 #include <viam/sdk/common/instance.hpp>
 #include <viam/sdk/common/proto_convert.hpp>
@@ -9,12 +10,19 @@
 
 using namespace viam::sdk;
 
+static void ensure_runtime() {
+    static bool inited = false;
+    if (inited) return;
+    static Instance inst;
+    gst_init(nullptr, nullptr);
+    setenv("VIAM_CSI_TEST_MODE", "1", 1);
+    setenv("VIAM_CSI_DEVICE", "test", 1);
+    inited = true;
+}
+
 // Test that the camera can be created with default values
 TEST(CSICamera, CreateDefault) {
-    // Create an Instance to satisfy SDK requirements
-    Instance inst;
-    // GStreamer initialization
-    gst_init(nullptr, nullptr);
+    ensure_runtime();
 
     ProtoStruct attrs = std::unordered_map<std::string, ProtoValue>();
 
@@ -30,7 +38,7 @@ TEST(CSICamera, CreateDefault) {
 
 // Test that the camera can be created with custom values
 TEST(CSICamera, CreateCustom) {
-    gst_init(nullptr, nullptr);
+    ensure_runtime();
 
     ProtoStruct attrs = std::unordered_map<std::string, ProtoValue>();
     attrs.insert(std::make_pair("width_px", ProtoValue(640)));
