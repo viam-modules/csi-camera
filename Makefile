@@ -65,7 +65,7 @@ dep:
 	apt-get update && \
 	if [ "$(TARGET)" = "jetson" ]; then \
 		apt-get -y install libgtest-dev && \
-		apt-get install -y gstreamer1.0-tools && \
+		apt-get install -y gstreamer1.0-tools gstreamer1.0-plugins-good && \
 		apt-get install -y libgstreamer1.0-dev \
 			libgstreamer-plugins-base1.0-dev \
 			libgstreamer-plugins-good1.0-dev \
