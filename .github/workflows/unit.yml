@@ -11,7 +11,7 @@ permissions:
 
 jobs:
   integration-test:
-    name: Integration Tests
+    name: Unit Tests
     runs-on: buildjet-2vcpu-ubuntu-2204-arm
     if: ${{ github.event.workflow_run.conclusion == 'success' }}
     strategy:
@@ -46,9 +46,9 @@ jobs:
           ./*.AppImage --appimage-extract
           chmod +x squashfs-root/AppRun
 
-      - name: Run integration tests
+      - name: Run unit tests
         run: |
-          cd tests/integration
+          cd tests/unit
           export VIAM_CSI_DEVICE=${{ matrix.TARGET }}
           export VIAM_CSI_TEST_MODE=1
           ctest --test-dir build --rerun-failed --output-on-failure -VV
