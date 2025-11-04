@@ -15,7 +15,7 @@ on:
       - 'docs/**'
 
 jobs:
-  integration-test:
+  unit-test:
     name: Unit Tests
     runs-on: buildjet-2vcpu-ubuntu-2204-arm
     strategy:
