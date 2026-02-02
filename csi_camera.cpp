@@ -219,6 +219,10 @@ void CSICamera::stop_pipeline() {
 }
 
 void CSICamera::catch_pipeline(GstMessage* msg) {
+    if (msg == nullptr) {
+        return;
+    }
+
     GError* error = nullptr;
     gchar* debugInfo = nullptr;
 
