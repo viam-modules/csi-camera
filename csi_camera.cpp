@@ -220,6 +220,7 @@ void CSICamera::stop_pipeline() {
 
 void CSICamera::catch_pipeline(GstMessage* msg) {
     if (msg == nullptr) {
+        VIAM_SDK_LOG(debug) << "catch_pipeline called with null message";
         return;
     }
 
