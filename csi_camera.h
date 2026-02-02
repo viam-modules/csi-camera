@@ -33,9 +33,6 @@ class CSICamera : public Camera, public Reconfigurable {
     // GST
     GstElement* pipeline = nullptr;
     GstBus* bus = nullptr;
-    GstMessage* msg = nullptr;
-    GstSample* sample = nullptr;
-    GstBuffer* buffer = nullptr;
     GstElement* appsink = nullptr;
 
    public:
@@ -63,7 +60,7 @@ class CSICamera : public Camera, public Reconfigurable {
     std::string create_pipeline() const;
     void wait_pipeline();
     void stop_pipeline();
-    void catch_pipeline();
+    void catch_pipeline(GstMessage* msg);
 
     // Image
     // helpers to pull and process images from appsink
@@ -71,7 +68,6 @@ class CSICamera : public Camera, public Reconfigurable {
     std::vector<unsigned char> buff_to_vec(GstBuffer* buff);
 
     // Getters
-    std::string get_name() const;
     int get_width_px() const;
     int get_height_px() const;
     int get_frame_rate() const;
