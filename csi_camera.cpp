@@ -269,7 +269,11 @@ std::vector<unsigned char> CSICamera::get_csi_image() {
         GstBuffer* buffer = gst_sample_get_buffer(sample);
 
         // Process or handle the buffer as needed
-        vec = buff_to_vec(buffer);
+        if (buffer != nullptr) {
+            vec = buff_to_vec(buffer);
+        } else {
+            VIAM_SDK_LOG(warn) << "Failed to get buffer from sample";
+        }
 
         // Release the sample
         gst_sample_unref(sample);
@@ -306,6 +310,10 @@ std::string CSICamera::create_pipeline() const {
 }
 
 std::vector<unsigned char> CSICamera::buff_to_vec(GstBuffer* buff) {
+    if (buff == nullptr) {
+        throw Exception("Cannot convert null buffer to vector");
+    }
+
     // Get the size of the buffer
     size_t bufferSize = gst_buffer_get_size(buff);
 
