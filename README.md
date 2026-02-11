@@ -87,12 +87,6 @@ Once configured, check the [Logs tab](https://docs.viam.com/program/debug/) of y
 ```
 ___
 
-### Develop
-
-View [DEVELOP.md](./docs/DEVELOP.md) for more information on how to build and run the module locally or in Docker. Pull Requests and Issues are welcome!
-
-___
-
 ## `csi-cam-pi` model for Pi boards
 
 See [PI.md](./docs/PI.md) for dependency information and tested setups.
