@@ -283,7 +283,12 @@ std::vector<unsigned char> CSICamera::get_csi_image() {
     // Check bus for messages
     GstMessage* msg = gst_bus_pop(bus);
     if (msg != nullptr) {
-        catch_pipeline(msg);
+        try {
+            catch_pipeline(msg);
+        } catch (...) {
+            gst_message_unref(msg);
+            throw;
+        }
         gst_message_unref(msg);
     }
 
