@@ -228,12 +228,15 @@ void CSICamera::catch_pipeline(GstMessage* msg) {
     gchar* debugInfo = nullptr;
 
     switch (GST_MESSAGE_TYPE(msg)) {
-        case GST_MESSAGE_ERROR:
+        case GST_MESSAGE_ERROR: {
             gst_message_parse_error(msg, &error, &debugInfo);
             VIAM_SDK_LOG(debug) << "Debug Info: " << debugInfo;
+            std::string err_msg = error->message;
+            g_error_free(error);
+            g_free(debugInfo);
             stop_pipeline();
-            throw Exception("GST pipeline error: " + std::string(error->message));
-            break;
+            throw Exception("GST pipeline error: " + err_msg);
+        }
         case GST_MESSAGE_EOS:
             VIAM_SDK_LOG(debug) << "End of stream received, stopping pipeline";
             stop_pipeline();
