@@ -218,17 +218,25 @@ void CSICamera::stop_pipeline() {
     bus = nullptr;
 }
 
-void CSICamera::catch_pipeline() {
+void CSICamera::catch_pipeline(GstMessage* msg) {
+    if (msg == nullptr) {
+        VIAM_SDK_LOG(debug) << "catch_pipeline called with null message";
+        return;
+    }
+
     GError* error = nullptr;
     gchar* debugInfo = nullptr;
 
     switch (GST_MESSAGE_TYPE(msg)) {
-        case GST_MESSAGE_ERROR:
+        case GST_MESSAGE_ERROR: {
             gst_message_parse_error(msg, &error, &debugInfo);
             VIAM_SDK_LOG(debug) << "Debug Info: " << debugInfo;
+            std::string err_msg = error->message;
+            g_error_free(error);
+            g_free(debugInfo);
             stop_pipeline();
-            throw Exception("GST pipeline error: " + std::string(error->message));
-            break;
+            throw Exception("GST pipeline error: " + err_msg);
+        }
         case GST_MESSAGE_EOS:
             VIAM_SDK_LOG(debug) << "End of stream received, stopping pipeline";
             stop_pipeline();
@@ -259,24 +267,32 @@ void CSICamera::catch_pipeline() {
 std::vector<unsigned char> CSICamera::get_csi_image() {
     // Pull sample from appsink
     std::vector<unsigned char> vec;
-    sample = gst_app_sink_pull_sample(GST_APP_SINK(appsink));
+    GstSample* sample = gst_app_sink_pull_sample(GST_APP_SINK(appsink));
     if (sample != nullptr) {
         // Retrieve buffer from the sample
-        buffer = gst_sample_get_buffer(sample);
+        GstBuffer* buffer = gst_sample_get_buffer(sample);
 
         // Process or handle the buffer as needed
-        vec = buff_to_vec(buffer);
+        if (buffer != nullptr) {
+            vec = buff_to_vec(buffer);
+        } else {
+            VIAM_SDK_LOG(warn) << "Failed to get buffer from sample";
+        }
 
         // Release the sample
         gst_sample_unref(sample);
     }
 
     // Check bus for messages
-    msg = gst_bus_pop(bus);
+    GstMessage* msg = gst_bus_pop(bus);
     if (msg != nullptr) {
-        catch_pipeline();
+        try {
+            catch_pipeline(msg);
+        } catch (...) {
+            gst_message_unref(msg);
+            throw;
+        }
         gst_message_unref(msg);
-        msg = nullptr;
     }
 
     return vec;
@@ -303,6 +319,10 @@ std::string CSICamera::create_pipeline() const {
 }
 
 std::vector<unsigned char> CSICamera::buff_to_vec(GstBuffer* buff) {
+    if (buff == nullptr) {
+        throw Exception("Cannot convert null buffer to vector");
+    }
+
     // Get the size of the buffer
     size_t bufferSize = gst_buffer_get_size(buff);
 
@@ -311,9 +331,9 @@ std::vector<unsigned char> CSICamera::buff_to_vec(GstBuffer* buff) {
 
     // Copy the buffer data to the vector
     GstMapInfo map;
-    gst_buffer_map(buffer, &map, GST_MAP_READ);
+    gst_buffer_map(buff, &map, GST_MAP_READ);
     memcpy(vec.data(), map.data, bufferSize);
-    gst_buffer_unmap(buffer, &map);
+    gst_buffer_unmap(buff, &map);
 
     return vec;
 }
