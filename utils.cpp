@@ -37,7 +37,7 @@ device_type get_device_type() {
         device_name.close();
     }
 
-    return device_type(device_type::unknown, "unkwnown");
+    return device_type(device_type::unknown, "unknown");
 }
 
 device_params get_device_params(device_type device) {

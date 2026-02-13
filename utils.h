@@ -4,7 +4,7 @@
 
 #include "constraints.h"
 
-#define DEVICE_PATH "/proc/device-tree/model"
+constexpr const char* DEVICE_PATH = "/proc/device-tree/model";
 
 struct device_type {
     enum type { unknown, jetson, pi, test };
