@@ -1,7 +1,6 @@
 #include <chrono>
 #include <cstring>
 #include <fstream>
-#include <iostream>
 #include <sstream>
 #include <thread>
 
@@ -116,8 +115,7 @@ void CSICamera::init_csi(const std::string pipeline_args) {
     GError* error = nullptr;
     pipeline = gst_parse_launch(pipeline_args.c_str(), &error);
     if (!pipeline) {
-        std::cerr << "Failed to create the pipeline" << std::endl;
-        g_print("Error: %s\n", error->message);
+        VIAM_SDK_LOG(error) << "Failed to create the pipeline: " << error->message;
         g_error_free(error);
         throw Exception("Failed to create the pipeline");
     }
@@ -171,14 +169,14 @@ void CSICamera::wait_pipeline() {
     }
 
     if (ret == GST_STATE_CHANGE_SUCCESS) {
-        std::cout << "GST pipeline state change success" << std::endl;
+        VIAM_SDK_LOG(debug) << "GST pipeline state change success";
     } else if (ret == GST_STATE_CHANGE_FAILURE) {
-        std::cerr << "GST pipeline failed to change state" << std::endl;
+        VIAM_SDK_LOG(error) << "GST pipeline failed to change state";
         throw Exception("GST pipeline failed to change state");
     } else if (ret == GST_STATE_CHANGE_NO_PREROLL) {
-        std::cout << "GST pipeline changed but not enough data for preroll" << std::endl;
+        VIAM_SDK_LOG(warn) << "GST pipeline changed but not enough data for preroll";
     } else {
-        std::cerr << "GST pipeline failed to change state" << std::endl;
+        VIAM_SDK_LOG(error) << "GST pipeline failed to change state";
         throw Exception("GST pipeline failed to change state");
     }
 }
