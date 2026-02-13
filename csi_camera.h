@@ -17,9 +17,7 @@
 
 #include "utils.h"
 
-using namespace viam::sdk;
-
-class CSICamera : public Camera, public Reconfigurable {
+class CSICamera : public viam::sdk::Camera, public viam::sdk::Reconfigurable {
    private:
     // Device
     device_type device;
@@ -37,22 +35,22 @@ class CSICamera : public Camera, public Reconfigurable {
 
    public:
     // Module
-    explicit CSICamera(const std::string name, const ProtoStruct& attrs);
+    explicit CSICamera(const std::string name, const viam::sdk::ProtoStruct& attrs);
     ~CSICamera();
-    void init(const ProtoStruct& attrs);
+    void init(const viam::sdk::ProtoStruct& attrs);
     void init_csi(const std::string pipeline_args);
-    void validate_attrs(const ProtoStruct& attrs);
+    void validate_attrs(const viam::sdk::ProtoStruct& attrs);
     template <typename T>
-    void set_attr(const ProtoStruct& attrs, const std::string& name, T CSICamera::* member, T de);
+    void set_attr(const viam::sdk::ProtoStruct& attrs, const std::string& name, T CSICamera::* member, T de);
 
     // Camera
     // overrides camera component interface
-    void reconfigure(const Dependencies& deps, const ResourceConfig& cfg) override;
-    raw_image get_image(const std::string mime_type, const ProtoStruct& extra) override;
-    image_collection get_images(std::vector<std::string> /* filter_source_names */, const ProtoStruct& /* extra */) override;
-    ProtoStruct do_command(const ProtoStruct& command) override;
-    point_cloud get_point_cloud(const std::string mime_type, const ProtoStruct& extra) override;
-    std::vector<GeometryConfig> get_geometries(const ProtoStruct& extra) override;
+    void reconfigure(const viam::sdk::Dependencies& deps, const viam::sdk::ResourceConfig& cfg) override;
+    raw_image get_image(const std::string mime_type, const viam::sdk::ProtoStruct& extra) override;
+    image_collection get_images(std::vector<std::string> /* filter_source_names */, const viam::sdk::ProtoStruct& /* extra */) override;
+    viam::sdk::ProtoStruct do_command(const viam::sdk::ProtoStruct& command) override;
+    point_cloud get_point_cloud(const std::string mime_type, const viam::sdk::ProtoStruct& extra) override;
+    std::vector<viam::sdk::GeometryConfig> get_geometries(const viam::sdk::ProtoStruct& extra) override;
     properties get_properties() override;
 
     // GST
