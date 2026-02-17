@@ -5,16 +5,16 @@
 
 device_type get_device_type() {
     // Check for environment variable override
-    const char* env_device = std::getenv("VIAM_CSI_DEVICE");
-    if (env_device != nullptr) {
-        std::string device_str(env_device);
-        std::transform(device_str.begin(), device_str.end(), device_str.begin(), ::tolower);
+    const char* env_raw = std::getenv("VIAM_CSI_DEVICE");
+    std::string env_device = env_raw ? env_raw : "";
+    if (!env_device.empty()) {
+        std::transform(env_device.begin(), env_device.end(), env_device.begin(), ::tolower);
 
-        if (device_str == "jetson") {
+        if (env_device == "jetson") {
             return device_type(device_type::jetson, "Jetson");
-        } else if (device_str == "pi") {
+        } else if (env_device == "pi") {
             return device_type(device_type::pi, "Raspberry Pi");
-        } else if (device_str == "test") {
+        } else if (env_device == "test") {
             return device_type(device_type::test, "Test");
         }
     }
