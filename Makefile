@@ -34,7 +34,7 @@ CONAN_TEST_OUT := ./build-conan-test
 CONAN_FLAGS := -s:a os=Linux -s:a arch=armv8 -s:a build_type=Release -s:a compiler=gcc -s:a compiler.libcxx=libstdc++11 -s:a compiler.cppstd=17 -s:a compiler.version=$$(g++ -dumpversion | cut -d. -f1)
 CONAN_TEST_OPT := -o "&:with_tests=True"
 
-.PHONY: conan-setup conan-install conan-build conan-test build-jetson-conan
+.PHONY: conan-setup conan-install conan-build conan-test build-jetson-conan sync-jetson-conan-binary
 
 conan-setup:
 	@python3 -m venv $(VENV_DIR) 2>/dev/null || true
@@ -103,10 +103,23 @@ build-jetson-conan:
 	$(MAKE) conan-install TARGET=jetson
 	$(MAKE) conan-build TARGET=jetson
 
+sync-jetson-conan-binary:
+	@if [ "$(TARGET)" != "jetson" ]; then \
+		echo "sync-jetson-conan-binary is only valid with TARGET=jetson"; \
+		exit 1; \
+	fi
+	@test -f $(CONAN_OUT)/build/Release/viam-csi
+	@mkdir -p $(BUILD_DIR)
+	@cp $(CONAN_OUT)/build/Release/viam-csi $(BUILD_DIR)/viam-csi
+
 # Module
 # Builds/installs module.
 .PHONY: build
 build:
+	if [ "$(TARGET)" = "jetson" ]; then \
+		$(MAKE) build-jetson-conan TARGET=jetson; \
+		exit $$?; \
+	fi
 	rm -rf $(BUILD_DIR) | true && \
 	mkdir -p build && \
 	cd build && \
@@ -115,6 +128,10 @@ build:
 
 # Creates appimage cmake build.
 package:
+	if [ "$(TARGET)" = "jetson" ]; then \
+		$(MAKE) build-jetson-conan TARGET=jetson && \
+		$(MAKE) sync-jetson-conan-binary TARGET=jetson; \
+	fi
 	cd etc && \
 	PACK_NAME=$(PACK_NAME) \
 	PACK_TAG=$(PACK_TAG) \
