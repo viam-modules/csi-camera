@@ -12,11 +12,10 @@ set(GNU_INCLUDE_PATH /usr/include/aarch64-linux-gnu)
 set(LOCAL_LIB_PATH /usr/local/lib)
 set(LOCAL_INCLUDE_PATH /usr/local/include)
 
-enable_testing()
-find_package(GTest REQUIRED)
 find_package(PkgConfig REQUIRED)
 find_package(viam-cpp-sdk CONFIG REQUIRED)
 pkg_check_modules(GSTREAMER REQUIRED gstreamer-1.0 gstreamer-app-1.0 gstreamer-base-1.0)
+option(VIAM_CSI_ENABLE_TESTS "Build viam-csi unit tests" ON)
 
 include_directories(
         ${GLIB_INCLUDE_DIRS}
@@ -43,15 +42,28 @@ target_link_libraries(${PROJECT_NAME}
 install(TARGETS ${PROJECT_NAME} DESTINATION usr/local/bin)
 
 
-# Test executable
-add_executable(${PROJECT_NAME}_test tests/unit/test_csi_camera.cpp)
+if(VIAM_CSI_ENABLE_TESTS)
+    enable_testing()
+    find_package(GTest REQUIRED)
 
-target_link_libraries(${PROJECT_NAME}_test
-        ${GSTREAMER_LIBRARIES}
-        GTest::GTest
-        GTest::Main
-        viam-cpp-sdk::viamsdk
-)
+    set(VIAM_CSI_GTEST_LIBS)
+    if(TARGET GTest::gtest AND TARGET GTest::gtest_main)
+        list(APPEND VIAM_CSI_GTEST_LIBS GTest::gtest GTest::gtest_main)
+    elseif(TARGET GTest::GTest AND TARGET GTest::Main)
+        list(APPEND VIAM_CSI_GTEST_LIBS GTest::GTest GTest::Main)
+    else()
+        message(FATAL_ERROR "Unable to resolve GTest targets from find_package(GTest)")
+    endif()
 
-# Add the test as a target
-add_test(NAME ${PROJECT_NAME}_test COMMAND ${PROJECT_NAME}_test)
+    # Test executable
+    add_executable(${PROJECT_NAME}_test tests/unit/test_csi_camera.cpp)
+
+    target_link_libraries(${PROJECT_NAME}_test
+            ${GSTREAMER_LIBRARIES}
+            ${VIAM_CSI_GTEST_LIBS}
+            viam-cpp-sdk::viamsdk
+    )
+
+    # Add the test as a target
+    add_test(NAME ${PROJECT_NAME}_test COMMAND ${PROJECT_NAME}_test)
+endif()

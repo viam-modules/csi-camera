@@ -1,0 +1,37 @@
+name: Conan Build (Isolated)
+
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - 'conanfile.py'
+      - 'Makefile'
+      - 'CMakeLists.txt'
+      - '.github/workflows/conan-build.yml'
+
+jobs:
+  conan-install-build:
+    name: Conan Install+Build (jetson)
+    runs-on: buildjet-2vcpu-ubuntu-2204-arm
+
+    container:
+      image: ghcr.io/viam-modules/csi-camera/viam-cpp-base-jetson:0.0.6
+      options: --platform linux/arm64
+
+    steps:
+      - name: Check out code
+        uses: actions/checkout@v4
+
+      - name: Restore Conan cache
+        uses: actions/cache@v4
+        with:
+          path: .conan-home
+          key: ${{ runner.os }}-jetson-conan-${{ hashFiles('conanfile.py', 'Makefile') }}
+          restore-keys: |
+            ${{ runner.os }}-jetson-conan-
+
+      - name: Conan install
+        run: make conan-install TARGET=jetson
+
+      - name: Conan build
+        run: make conan-build TARGET=jetson

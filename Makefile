@@ -24,6 +24,85 @@ else ifeq ($(TARGET), pi)
 	RECIPE=./viam-csi-pi-arm64.yml
 endif
 
+# Conan (Phase 1 opt-in path)
+VENV_DIR := ./.venv
+CONAN_USER_HOME := $(CURDIR)/.conan-home
+CONAN_USER_BIN := $(CONAN_USER_HOME)/.local/bin/conan
+CONAN_HOME := $(CONAN_USER_HOME)/.conan2
+CONAN_OUT := ./build-conan
+CONAN_TEST_OUT := ./build-conan-test
+CONAN_FLAGS := -s:a os=Linux -s:a arch=armv8 -s:a build_type=Release -s:a compiler=gcc -s:a compiler.libcxx=libstdc++11 -s:a compiler.cppstd=17 -s:a compiler.version=$$(g++ -dumpversion | cut -d. -f1)
+CONAN_TEST_OPT := -o "&:with_tests=True"
+
+.PHONY: conan-setup conan-install conan-build conan-test build-jetson-conan
+
+conan-setup:
+	@python3 -m venv $(VENV_DIR) 2>/dev/null || true
+	@if [ -x $(VENV_DIR)/bin/activate ]; then \
+		. $(VENV_DIR)/bin/activate && \
+		pip install conan; \
+	else \
+		mkdir -p $(CONAN_USER_HOME) && \
+		HOME=$(CONAN_USER_HOME) python3 -m pip install --user conan; \
+	fi
+	@if [ -x $(VENV_DIR)/bin/activate ]; then \
+		. $(VENV_DIR)/bin/activate && CONAN_HOME=$(CONAN_HOME) python3 -m conan profile detect --force; \
+	else \
+		HOME=$(CONAN_USER_HOME) CONAN_HOME=$(CONAN_HOME) $(CONAN_USER_BIN) profile detect --force; \
+	fi
+	@if [ -x $(VENV_DIR)/bin/activate ]; then \
+		. $(VENV_DIR)/bin/activate && CONAN_HOME=$(CONAN_HOME) python3 -m conan remote add viamconan https://viam.jfrog.io/artifactory/api/conan/viamconan --index 0 --force; \
+	else \
+		HOME=$(CONAN_USER_HOME) CONAN_HOME=$(CONAN_HOME) $(CONAN_USER_BIN) remote add viamconan https://viam.jfrog.io/artifactory/api/conan/viamconan --index 0 --force; \
+	fi || true
+
+conan-install:
+	@if [ -x $(VENV_DIR)/bin/activate ]; then \
+		. $(VENV_DIR)/bin/activate && CONAN_HOME=$(CONAN_HOME) python3 -m conan --version >/dev/null 2>&1; \
+	else \
+		HOME=$(CONAN_USER_HOME) CONAN_HOME=$(CONAN_HOME) $(CONAN_USER_BIN) --version >/dev/null 2>&1; \
+	fi || $(MAKE) conan-setup
+	@if [ -x $(VENV_DIR)/bin/activate ]; then \
+		. $(VENV_DIR)/bin/activate && CONAN_HOME=$(CONAN_HOME) python3 -m conan install . --output-folder=$(CONAN_OUT) --build=missing $(CONAN_FLAGS); \
+	else \
+		HOME=$(CONAN_USER_HOME) CONAN_HOME=$(CONAN_HOME) $(CONAN_USER_BIN) install . --output-folder=$(CONAN_OUT) --build=missing $(CONAN_FLAGS); \
+	fi
+
+conan-build:
+	@if [ -x $(VENV_DIR)/bin/activate ]; then \
+		. $(VENV_DIR)/bin/activate && CONAN_HOME=$(CONAN_HOME) python3 -m conan --version >/dev/null 2>&1; \
+	else \
+		HOME=$(CONAN_USER_HOME) CONAN_HOME=$(CONAN_HOME) $(CONAN_USER_BIN) --version >/dev/null 2>&1; \
+	fi || $(MAKE) conan-setup
+	@if [ -x $(VENV_DIR)/bin/activate ]; then \
+		. $(VENV_DIR)/bin/activate && CONAN_HOME=$(CONAN_HOME) python3 -m conan build . --output-folder=$(CONAN_OUT) --build=none $(CONAN_FLAGS); \
+	else \
+		HOME=$(CONAN_USER_HOME) CONAN_HOME=$(CONAN_HOME) $(CONAN_USER_BIN) build . --output-folder=$(CONAN_OUT) --build=none $(CONAN_FLAGS); \
+	fi
+
+conan-test: conan-install conan-build
+	@if [ -x $(VENV_DIR)/bin/activate ]; then \
+		. $(VENV_DIR)/bin/activate && CONAN_HOME=$(CONAN_HOME) python3 -m conan install . --output-folder=$(CONAN_TEST_OUT) --build=missing $(CONAN_FLAGS) $(CONAN_TEST_OPT); \
+	else \
+		HOME=$(CONAN_USER_HOME) CONAN_HOME=$(CONAN_HOME) $(CONAN_USER_BIN) install . --output-folder=$(CONAN_TEST_OUT) --build=missing $(CONAN_FLAGS) $(CONAN_TEST_OPT); \
+	fi
+	@if [ -x $(VENV_DIR)/bin/activate ]; then \
+		. $(VENV_DIR)/bin/activate && CONAN_HOME=$(CONAN_HOME) python3 -m conan build . --output-folder=$(CONAN_TEST_OUT) --build=none $(CONAN_FLAGS) $(CONAN_TEST_OPT); \
+	else \
+		HOME=$(CONAN_USER_HOME) CONAN_HOME=$(CONAN_HOME) $(CONAN_USER_BIN) build . --output-folder=$(CONAN_TEST_OUT) --build=none $(CONAN_FLAGS) $(CONAN_TEST_OPT); \
+	fi
+	cd $(CONAN_TEST_OUT)/build/Release && \
+		. ./generators/conanrun.sh && \
+		ctest --output-on-failure
+
+build-jetson-conan:
+	@if [ "$(TARGET)" != "jetson" ]; then \
+		echo "build-jetson-conan is only valid with TARGET=jetson"; \
+		exit 1; \
+	fi
+	$(MAKE) conan-install TARGET=jetson
+	$(MAKE) conan-build TARGET=jetson
+
 # Module
 # Builds/installs module.
 .PHONY: build
