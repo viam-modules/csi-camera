@@ -31,10 +31,13 @@ CONAN_USER_BIN := $(CONAN_USER_HOME)/.local/bin/conan
 CONAN_HOME := $(CONAN_USER_HOME)/.conan2
 CONAN_OUT := ./build-conan
 CONAN_TEST_OUT := ./build-conan-test
+JETSON_CONAN_BIN := $(CONAN_OUT)/build/Release/viam-csi
+JETSON_CONAN_STAMP := $(CONAN_OUT)/.jetson-conan.stamp
+JETSON_CONAN_INPUTS := CMakeLists.txt conanfile.py Makefile main.cpp csi_camera.cpp csi_camera.h utils.cpp utils.h constraints.h
 CONAN_FLAGS := -s:a os=Linux -s:a arch=armv8 -s:a build_type=Release -s:a compiler=gcc -s:a compiler.libcxx=libstdc++11 -s:a compiler.cppstd=17 -s:a compiler.version=$$(g++ -dumpversion | cut -d. -f1)
 CONAN_TEST_OPT := -o "&:with_tests=True"
 
-.PHONY: conan-setup conan-install conan-build conan-test build-jetson-conan sync-jetson-conan-binary
+.PHONY: conan-setup conan-install conan-build conan-test build-jetson-conan sync-jetson-conan-binary ensure-jetson-conan-binary
 
 conan-setup:
 	@python3 -m venv $(VENV_DIR) 2>/dev/null || true
@@ -102,15 +105,35 @@ build-jetson-conan:
 	fi
 	$(MAKE) conan-install TARGET=jetson
 	$(MAKE) conan-build TARGET=jetson
+	@mkdir -p $(CONAN_OUT)
+	@touch $(JETSON_CONAN_STAMP)
 
 sync-jetson-conan-binary:
 	@if [ "$(TARGET)" != "jetson" ]; then \
 		echo "sync-jetson-conan-binary is only valid with TARGET=jetson"; \
 		exit 1; \
 	fi
-	@test -f $(CONAN_OUT)/build/Release/viam-csi
+	@test -f $(JETSON_CONAN_BIN)
 	@mkdir -p $(BUILD_DIR)
-	@cp $(CONAN_OUT)/build/Release/viam-csi $(BUILD_DIR)/viam-csi
+	@cp $(JETSON_CONAN_BIN) $(BUILD_DIR)/viam-csi
+
+ensure-jetson-conan-binary:
+	@if [ "$(TARGET)" != "jetson" ]; then \
+		echo "ensure-jetson-conan-binary is only valid with TARGET=jetson"; \
+		exit 1; \
+	fi
+	@rebuild=0; \
+	if [ ! -x "$(JETSON_CONAN_BIN)" ] || [ ! -f "$(JETSON_CONAN_STAMP)" ]; then \
+		rebuild=1; \
+	elif find $(JETSON_CONAN_INPUTS) -type f -newer "$(JETSON_CONAN_STAMP)" | grep -q .; then \
+		rebuild=1; \
+	fi; \
+	if [ "$$rebuild" -eq 1 ]; then \
+		echo "Jetson Conan binary missing/stale; rebuilding"; \
+		$(MAKE) build-jetson-conan TARGET=jetson; \
+	else \
+		echo "Jetson Conan binary is up to date; skipping Conan rebuild"; \
+	fi
 
 # Module
 # Builds/installs module.
@@ -129,7 +152,7 @@ build:
 # Creates appimage cmake build.
 package:
 	if [ "$(TARGET)" = "jetson" ]; then \
-		$(MAKE) build-jetson-conan TARGET=jetson && \
+		$(MAKE) ensure-jetson-conan-binary TARGET=jetson && \
 		$(MAKE) sync-jetson-conan-binary TARGET=jetson; \
 	fi
 	cd etc && \
