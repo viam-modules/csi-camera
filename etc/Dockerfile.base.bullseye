@@ -60,7 +60,7 @@ RUN cp -r ${HOME}/opt/src/viam-cpp-sdk/build/install/* /usr/local/
 
 # Install appimage-builder
 RUN apt-get install fakeroot libgtk-3-bin squashfs-tools -y
-RUN apt install python3-pip -y
+RUN apt install python3-pip python3-venv -y
 RUN pip install -U pip setuptools
 RUN pip install urllib3==1.26.12 requests==2.26.0
 RUN cd ${HOME}/opt/src && \
