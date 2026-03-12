@@ -37,7 +37,7 @@ JETSON_CONAN_INPUTS := CMakeLists.txt conanfile.py Makefile main.cpp csi_camera.
 CONAN_FLAGS := -s:a os=Linux -s:a arch=armv8 -s:a build_type=Release -s:a compiler=gcc -s:a compiler.libcxx=libstdc++11 -s:a compiler.cppstd=17 -s:a compiler.version=$$(g++ -dumpversion | cut -d. -f1)
 CONAN_TEST_OPT := -o "&:with_tests=True"
 
-.PHONY: conan-setup conan-install conan-build conan-test build-jetson-conan sync-jetson-conan-binary ensure-jetson-conan-binary
+.PHONY: conan-setup conan-install conan-build conan-build-with-tests conan-test build-jetson-conan sync-jetson-conan-binary ensure-jetson-conan-binary
 
 conan-setup:
 	@python3 -m venv $(VENV_DIR) 2>/dev/null || true
@@ -83,7 +83,12 @@ conan-build:
 		HOME=$(CONAN_USER_HOME) CONAN_HOME=$(CONAN_HOME) $(CONAN_USER_BIN) build . --output-folder=$(CONAN_OUT) --build=none $(CONAN_FLAGS); \
 	fi
 
-conan-test: conan-install conan-build
+conan-build-with-tests:
+	@if [ -x $(VENV_DIR)/bin/activate ]; then \
+		. $(VENV_DIR)/bin/activate && CONAN_HOME=$(CONAN_HOME) python3 -m conan --version >/dev/null 2>&1; \
+	else \
+		HOME=$(CONAN_USER_HOME) CONAN_HOME=$(CONAN_HOME) $(CONAN_USER_BIN) --version >/dev/null 2>&1; \
+	fi || $(MAKE) conan-setup
 	@if [ -x $(VENV_DIR)/bin/activate ]; then \
 		. $(VENV_DIR)/bin/activate && CONAN_HOME=$(CONAN_HOME) python3 -m conan install . --output-folder=$(CONAN_TEST_OUT) --build=missing $(CONAN_FLAGS) $(CONAN_TEST_OPT); \
 	else \
@@ -94,6 +99,8 @@ conan-test: conan-install conan-build
 	else \
 		HOME=$(CONAN_USER_HOME) CONAN_HOME=$(CONAN_HOME) $(CONAN_USER_BIN) build . --output-folder=$(CONAN_TEST_OUT) --build=none $(CONAN_FLAGS) $(CONAN_TEST_OPT); \
 	fi
+
+conan-test: conan-install conan-build conan-build-with-tests
 	cd $(CONAN_TEST_OUT)/build/Release && \
 		. ./generators/conanrun.sh && \
 		ctest --output-on-failure
