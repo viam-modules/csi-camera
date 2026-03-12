@@ -20,6 +20,8 @@ RUN apt-get -y --no-install-recommends install \
     less \
     ninja-build \
     pkg-config \
+    python3-pip \
+    python3-venv \
     software-properties-common \
     sudo \
     wget

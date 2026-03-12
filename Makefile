@@ -24,81 +24,42 @@ else ifeq ($(TARGET), pi)
 	RECIPE=./viam-csi-pi-arm64.yml
 endif
 
-# Conan (Phase 1 opt-in path)
-VENV_DIR := ./.venv
-CONAN_USER_HOME := $(CURDIR)/.conan-home
-CONAN_USER_BIN := $(CONAN_USER_HOME)/.local/bin/conan
-CONAN_HOME := $(CONAN_USER_HOME)/.conan2
+# Conan
+export CONAN_HOME := $(CURDIR)/.conan-home/.conan2
+VENV_DIR := ./venv
 CONAN_OUT := ./build-conan
 CONAN_TEST_OUT := ./build-conan-test
 JETSON_CONAN_BIN := $(CONAN_OUT)/build/Release/viam-csi
 JETSON_CONAN_STAMP := $(CONAN_OUT)/.jetson-conan.stamp
 JETSON_CONAN_INPUTS := CMakeLists.txt conanfile.py Makefile main.cpp csi_camera.cpp csi_camera.h utils.cpp utils.h constraints.h
-CONAN_FLAGS := -s:a os=Linux -s:a arch=armv8 -s:a build_type=Release -s:a compiler=gcc -s:a compiler.libcxx=libstdc++11 -s:a compiler.cppstd=17 -s:a compiler.version=$$(g++ -dumpversion | cut -d. -f1)
+CONAN_FLAGS := -s:a build_type=Release -s:a compiler.cppstd=17
 CONAN_TEST_OPT := -o "&:with_tests=True"
 
 .PHONY: conan-setup conan-install conan-build conan-build-with-tests conan-test build-jetson-conan sync-jetson-conan-binary ensure-jetson-conan-binary
 
 conan-setup:
-	@python3 -m venv $(VENV_DIR) 2>/dev/null || true
-	@if [ -x $(VENV_DIR)/bin/activate ]; then \
-		. $(VENV_DIR)/bin/activate && \
-		pip install conan; \
-	else \
-		mkdir -p $(CONAN_USER_HOME) && \
-		HOME=$(CONAN_USER_HOME) python3 -m pip install --user conan; \
-	fi
-	@if [ -x $(VENV_DIR)/bin/activate ]; then \
-		. $(VENV_DIR)/bin/activate && CONAN_HOME=$(CONAN_HOME) python3 -m conan profile detect --force; \
-	else \
-		HOME=$(CONAN_USER_HOME) CONAN_HOME=$(CONAN_HOME) $(CONAN_USER_BIN) profile detect --force; \
-	fi
-	@if [ -x $(VENV_DIR)/bin/activate ]; then \
-		. $(VENV_DIR)/bin/activate && CONAN_HOME=$(CONAN_HOME) python3 -m conan remote add viamconan https://viam.jfrog.io/artifactory/api/conan/viamconan --index 0 --force; \
-	else \
-		HOME=$(CONAN_USER_HOME) CONAN_HOME=$(CONAN_HOME) $(CONAN_USER_BIN) remote add viamconan https://viam.jfrog.io/artifactory/api/conan/viamconan --index 0 --force; \
-	fi || true
+	python3 -m venv $(VENV_DIR) 2>/dev/null || pip3 install conan
+	test -f $(VENV_DIR)/bin/activate && . $(VENV_DIR)/bin/activate; pip install conan 2>/dev/null || true
+	test -f $(VENV_DIR)/bin/activate && . $(VENV_DIR)/bin/activate; \
+	conan profile detect --force
+	test -f $(VENV_DIR)/bin/activate && . $(VENV_DIR)/bin/activate; \
+	conan remote add viamconan https://viam.jfrog.io/artifactory/api/conan/viamconan --index 0 --force || true
 
 conan-install:
-	@if [ -x $(VENV_DIR)/bin/activate ]; then \
-		. $(VENV_DIR)/bin/activate && CONAN_HOME=$(CONAN_HOME) python3 -m conan --version >/dev/null 2>&1; \
-	else \
-		HOME=$(CONAN_USER_HOME) CONAN_HOME=$(CONAN_HOME) $(CONAN_USER_BIN) --version >/dev/null 2>&1; \
-	fi || $(MAKE) conan-setup
-	@if [ -x $(VENV_DIR)/bin/activate ]; then \
-		. $(VENV_DIR)/bin/activate && CONAN_HOME=$(CONAN_HOME) python3 -m conan install . --output-folder=$(CONAN_OUT) --build=missing $(CONAN_FLAGS); \
-	else \
-		HOME=$(CONAN_USER_HOME) CONAN_HOME=$(CONAN_HOME) $(CONAN_USER_BIN) install . --output-folder=$(CONAN_OUT) --build=missing $(CONAN_FLAGS); \
-	fi
+	test -f $(VENV_DIR)/bin/activate && . $(VENV_DIR)/bin/activate; \
+	conan --version >/dev/null 2>&1 || $(MAKE) conan-setup
+	test -f $(VENV_DIR)/bin/activate && . $(VENV_DIR)/bin/activate; \
+	conan install . --output-folder=$(CONAN_OUT) --build=missing $(CONAN_FLAGS)
 
 conan-build:
-	@if [ -x $(VENV_DIR)/bin/activate ]; then \
-		. $(VENV_DIR)/bin/activate && CONAN_HOME=$(CONAN_HOME) python3 -m conan --version >/dev/null 2>&1; \
-	else \
-		HOME=$(CONAN_USER_HOME) CONAN_HOME=$(CONAN_HOME) $(CONAN_USER_BIN) --version >/dev/null 2>&1; \
-	fi || $(MAKE) conan-setup
-	@if [ -x $(VENV_DIR)/bin/activate ]; then \
-		. $(VENV_DIR)/bin/activate && CONAN_HOME=$(CONAN_HOME) python3 -m conan build . --output-folder=$(CONAN_OUT) --build=none $(CONAN_FLAGS); \
-	else \
-		HOME=$(CONAN_USER_HOME) CONAN_HOME=$(CONAN_HOME) $(CONAN_USER_BIN) build . --output-folder=$(CONAN_OUT) --build=none $(CONAN_FLAGS); \
-	fi
+	test -f $(VENV_DIR)/bin/activate && . $(VENV_DIR)/bin/activate; \
+	conan build . --output-folder=$(CONAN_OUT) --build=none $(CONAN_FLAGS)
 
 conan-build-with-tests:
-	@if [ -x $(VENV_DIR)/bin/activate ]; then \
-		. $(VENV_DIR)/bin/activate && CONAN_HOME=$(CONAN_HOME) python3 -m conan --version >/dev/null 2>&1; \
-	else \
-		HOME=$(CONAN_USER_HOME) CONAN_HOME=$(CONAN_HOME) $(CONAN_USER_BIN) --version >/dev/null 2>&1; \
-	fi || $(MAKE) conan-setup
-	@if [ -x $(VENV_DIR)/bin/activate ]; then \
-		. $(VENV_DIR)/bin/activate && CONAN_HOME=$(CONAN_HOME) python3 -m conan install . --output-folder=$(CONAN_TEST_OUT) --build=missing $(CONAN_FLAGS) $(CONAN_TEST_OPT); \
-	else \
-		HOME=$(CONAN_USER_HOME) CONAN_HOME=$(CONAN_HOME) $(CONAN_USER_BIN) install . --output-folder=$(CONAN_TEST_OUT) --build=missing $(CONAN_FLAGS) $(CONAN_TEST_OPT); \
-	fi
-	@if [ -x $(VENV_DIR)/bin/activate ]; then \
-		. $(VENV_DIR)/bin/activate && CONAN_HOME=$(CONAN_HOME) python3 -m conan build . --output-folder=$(CONAN_TEST_OUT) --build=none $(CONAN_FLAGS) $(CONAN_TEST_OPT); \
-	else \
-		HOME=$(CONAN_USER_HOME) CONAN_HOME=$(CONAN_HOME) $(CONAN_USER_BIN) build . --output-folder=$(CONAN_TEST_OUT) --build=none $(CONAN_FLAGS) $(CONAN_TEST_OPT); \
-	fi
+	test -f $(VENV_DIR)/bin/activate && . $(VENV_DIR)/bin/activate; \
+	conan install . --output-folder=$(CONAN_TEST_OUT) --build=missing $(CONAN_FLAGS) $(CONAN_TEST_OPT)
+	test -f $(VENV_DIR)/bin/activate && . $(VENV_DIR)/bin/activate; \
+	conan build . --output-folder=$(CONAN_TEST_OUT) --build=none $(CONAN_FLAGS) $(CONAN_TEST_OPT)
 
 conan-test: conan-install conan-build conan-build-with-tests
 	cd $(CONAN_TEST_OUT)/build/Release && \
