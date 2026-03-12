@@ -17,7 +17,7 @@ on:
 jobs:
   appimage:
     name: Build
-    runs-on: buildjet-2vcpu-ubuntu-2204-arm
+    runs-on: buildjet-8vcpu-ubuntu-2204-arm
     strategy:
       matrix:
         include:

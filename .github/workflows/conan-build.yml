@@ -12,7 +12,7 @@ on:
 jobs:
   conan-install-build:
     name: Conan Install+Build (jetson)
-    runs-on: buildjet-2vcpu-ubuntu-2204-arm
+    runs-on: buildjet-8vcpu-ubuntu-2204-arm
 
     container:
       image: ghcr.io/viam-modules/csi-camera/viam-cpp-base-jetson:0.0.6
