@@ -48,11 +48,8 @@ jobs:
       - name: Install module dependencies
         run: make dep
 
-      - name: Build viam-csi with tests
-        run: make conan-build-with-tests TARGET=${{ matrix.TARGET }}
-
-      - name: Run unit tests
-        run: |
-          export VIAM_CSI_DEVICE=${{ matrix.TARGET }}
-          export VIAM_CSI_TEST_MODE=1
-          ctest --test-dir build-conan-test/build/Release --rerun-failed --output-on-failure -VV
+      - name: Build and run unit tests
+        run: make conan-test TARGET=${{ matrix.TARGET }}
+        env:
+          VIAM_CSI_DEVICE: ${{ matrix.TARGET }}
+          VIAM_CSI_TEST_MODE: "1"
