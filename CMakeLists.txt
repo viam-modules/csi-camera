@@ -34,10 +34,16 @@ link_directories(
 # Main executable
 add_executable(${PROJECT_NAME} main.cpp csi_camera.cpp utils.cpp)
 
-target_link_libraries(${PROJECT_NAME} 
-        ${GSTREAMER_LIBRARIES} 
+target_link_libraries(${PROJECT_NAME}
+        ${GSTREAMER_LIBRARIES}
         viam-cpp-sdk::viamsdk
 )
+
+# Bullseye (glibc < 2.34) keeps POSIX AIO symbols in librt; Jammy+ merges them into libc.
+# Conan's viamsdk component declares rt as a system_lib but link order can prevent resolution.
+if(UNIX AND NOT APPLE)
+    target_link_libraries(${PROJECT_NAME} rt)
+endif()
 
 install(TARGETS ${PROJECT_NAME} DESTINATION usr/local/bin)
 
@@ -63,6 +69,10 @@ if(VIAM_CSI_ENABLE_TESTS)
             ${VIAM_CSI_GTEST_LIBS}
             viam-cpp-sdk::viamsdk
     )
+
+    if(UNIX AND NOT APPLE)
+        target_link_libraries(${PROJECT_NAME}_test rt)
+    endif()
 
     # Add the test as a target
     add_test(NAME ${PROJECT_NAME}_test COMMAND ${PROJECT_NAME}_test)
