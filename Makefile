@@ -29,16 +29,16 @@ export CONAN_HOME := $(CURDIR)/.conan-home/.conan2
 VENV_DIR := ./venv
 CONAN_OUT := ./build-conan
 CONAN_TEST_OUT := ./build-conan-test
-JETSON_CONAN_BIN := $(CONAN_OUT)/build/Release/viam-csi
-JETSON_CONAN_STAMP := $(CONAN_OUT)/.jetson-conan.stamp
-JETSON_CONAN_INPUTS := CMakeLists.txt conanfile.py Makefile main.cpp csi_camera.cpp csi_camera.h utils.cpp utils.h constraints.h
+CONAN_BIN := $(CONAN_OUT)/build/Release/viam-csi
+CONAN_STAMP := $(CONAN_OUT)/.conan-$(TARGET).stamp
+CONAN_INPUTS := CMakeLists.txt conanfile.py Makefile main.cpp csi_camera.cpp csi_camera.h utils.cpp utils.h constraints.h
 CONAN_FLAGS := -s:a build_type=Release -s:a compiler.cppstd=17
 CONAN_TEST_OPT := -o "&:with_tests=True"
 
-.PHONY: conan-setup conan-install conan-build conan-build-with-tests conan-test build-jetson-conan sync-jetson-conan-binary ensure-jetson-conan-binary
+.PHONY: conan-setup conan-install conan-build conan-build-with-tests conan-test build-conan-binary sync-conan-binary ensure-conan-binary
 
 conan-setup:
-	python3 -m venv $(VENV_DIR) 2>/dev/null || pip3 install conan
+	python3 -m venv $(VENV_DIR) 2>/dev/null || pip3 install conan --ignore-installed
 	test -f $(VENV_DIR)/bin/activate && . $(VENV_DIR)/bin/activate; pip install conan 2>/dev/null || true
 	test -f $(VENV_DIR)/bin/activate && . $(VENV_DIR)/bin/activate; \
 	conan profile detect --force
@@ -66,63 +66,41 @@ conan-test: conan-install conan-build conan-build-with-tests
 		. ./generators/conanrun.sh && \
 		ctest --output-on-failure
 
-build-jetson-conan:
-	@if [ "$(TARGET)" != "jetson" ]; then \
-		echo "build-jetson-conan is only valid with TARGET=jetson"; \
-		exit 1; \
-	fi
-	$(MAKE) conan-install TARGET=jetson
-	$(MAKE) conan-build TARGET=jetson
+build-conan-binary:
+	$(MAKE) conan-install TARGET=$(TARGET)
+	$(MAKE) conan-build TARGET=$(TARGET)
 	@mkdir -p $(CONAN_OUT)
-	@touch $(JETSON_CONAN_STAMP)
+	@touch $(CONAN_STAMP)
 
-sync-jetson-conan-binary:
-	@if [ "$(TARGET)" != "jetson" ]; then \
-		echo "sync-jetson-conan-binary is only valid with TARGET=jetson"; \
-		exit 1; \
-	fi
-	@test -f $(JETSON_CONAN_BIN)
+sync-conan-binary:
+	@test -f $(CONAN_BIN)
 	@mkdir -p $(BUILD_DIR)
-	@cp $(JETSON_CONAN_BIN) $(BUILD_DIR)/viam-csi
+	@cp $(CONAN_BIN) $(BUILD_DIR)/viam-csi
 
-ensure-jetson-conan-binary:
-	@if [ "$(TARGET)" != "jetson" ]; then \
-		echo "ensure-jetson-conan-binary is only valid with TARGET=jetson"; \
-		exit 1; \
-	fi
+ensure-conan-binary:
 	@rebuild=0; \
-	if [ ! -x "$(JETSON_CONAN_BIN)" ] || [ ! -f "$(JETSON_CONAN_STAMP)" ]; then \
+	if [ ! -x "$(CONAN_BIN)" ] || [ ! -f "$(CONAN_STAMP)" ]; then \
 		rebuild=1; \
-	elif find $(JETSON_CONAN_INPUTS) -type f -newer "$(JETSON_CONAN_STAMP)" | grep -q .; then \
+	elif find $(CONAN_INPUTS) -type f -newer "$(CONAN_STAMP)" | grep -q .; then \
 		rebuild=1; \
 	fi; \
 	if [ "$$rebuild" -eq 1 ]; then \
-		echo "Jetson Conan binary missing/stale; rebuilding"; \
-		$(MAKE) build-jetson-conan TARGET=jetson; \
+		echo "Conan binary missing/stale; rebuilding"; \
+		$(MAKE) build-conan-binary TARGET=$(TARGET); \
 	else \
-		echo "Jetson Conan binary is up to date; skipping Conan rebuild"; \
+		echo "Conan binary is up to date; skipping rebuild"; \
 	fi
 
 # Module
 # Builds/installs module.
 .PHONY: build
 build:
-	if [ "$(TARGET)" = "jetson" ]; then \
-		$(MAKE) build-jetson-conan TARGET=jetson; \
-		exit $$?; \
-	fi
-	rm -rf $(BUILD_DIR) | true && \
-	mkdir -p build && \
-	cd build && \
-	cmake -DCMAKE_INSTALL_PREFIX=$(INSTALL_DIR) .. -G Ninja && \
-	ninja -j $(shell nproc)
+	$(MAKE) build-conan-binary TARGET=$(TARGET)
 
 # Creates appimage cmake build.
 package:
-	if [ "$(TARGET)" = "jetson" ]; then \
-		$(MAKE) ensure-jetson-conan-binary TARGET=jetson && \
-		$(MAKE) sync-jetson-conan-binary TARGET=jetson; \
-	fi
+	$(MAKE) ensure-conan-binary TARGET=$(TARGET)
+	$(MAKE) sync-conan-binary TARGET=$(TARGET)
 	cd etc && \
 	PACK_NAME=$(PACK_NAME) \
 	PACK_TAG=$(PACK_TAG) \
