@@ -30,12 +30,10 @@ VENV_DIR := ./venv
 CONAN_OUT := ./build-conan
 CONAN_TEST_OUT := ./build-conan-test
 CONAN_BIN := $(CONAN_OUT)/build/Release/viam-csi
-CONAN_STAMP := $(CONAN_OUT)/.conan-$(TARGET).stamp
-CONAN_INPUTS := CMakeLists.txt conanfile.py Makefile main.cpp csi_camera.cpp csi_camera.h utils.cpp utils.h constraints.h
 CONAN_FLAGS := -s:a build_type=Release -s:a compiler.cppstd=17
 CONAN_TEST_OPT := -o "&:with_tests=True"
 
-.PHONY: conan-setup conan-install conan-build conan-build-with-tests conan-test build-conan-binary sync-conan-binary ensure-conan-binary
+.PHONY: conan-setup conan-install conan-build conan-build-with-tests conan-test build-conan-binary
 
 conan-setup:
 	python3 -m venv $(VENV_DIR) 2>/dev/null || pip3 install conan --ignore-installed
@@ -69,27 +67,6 @@ conan-test: conan-install conan-build conan-build-with-tests
 build-conan-binary:
 	$(MAKE) conan-install TARGET=$(TARGET)
 	$(MAKE) conan-build TARGET=$(TARGET)
-	@mkdir -p $(CONAN_OUT)
-	@touch $(CONAN_STAMP)
-
-sync-conan-binary:
-	@test -f $(CONAN_BIN)
-	@mkdir -p $(BUILD_DIR)
-	@cp $(CONAN_BIN) $(BUILD_DIR)/viam-csi
-
-ensure-conan-binary:
-	@rebuild=0; \
-	if [ ! -x "$(CONAN_BIN)" ] || [ ! -f "$(CONAN_STAMP)" ]; then \
-		rebuild=1; \
-	elif find $(CONAN_INPUTS) -type f -newer "$(CONAN_STAMP)" | grep -q .; then \
-		rebuild=1; \
-	fi; \
-	if [ "$$rebuild" -eq 1 ]; then \
-		echo "Conan binary missing/stale; rebuilding"; \
-		$(MAKE) build-conan-binary TARGET=$(TARGET); \
-	else \
-		echo "Conan binary is up to date; skipping rebuild"; \
-	fi
 
 # Module
 # Builds/installs module.
@@ -97,10 +74,11 @@ ensure-conan-binary:
 build:
 	$(MAKE) build-conan-binary TARGET=$(TARGET)
 
-# Creates appimage cmake build.
+# Creates appimage package.
 package:
-	$(MAKE) ensure-conan-binary TARGET=$(TARGET)
-	$(MAKE) sync-conan-binary TARGET=$(TARGET)
+	$(MAKE) build-conan-binary TARGET=$(TARGET)
+	@mkdir -p $(BUILD_DIR)
+	@cp $(CONAN_BIN) $(BUILD_DIR)/viam-csi
 	cd etc && \
 	PACK_NAME=$(PACK_NAME) \
 	PACK_TAG=$(PACK_TAG) \
