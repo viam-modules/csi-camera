@@ -41,9 +41,9 @@ jobs:
         uses: actions/cache@v4
         with:
           path: .conan-home
-          key: ${{ runner.os }}-jetson-conan-${{ hashFiles('conanfile.py', 'Makefile') }}
+          key: ${{ runner.os }}-${{ matrix.TARGET }}-conan-${{ hashFiles('conanfile.py', 'Makefile') }}
           restore-keys: |
-            ${{ runner.os }}-jetson-conan-
+            ${{ runner.os }}-${{ matrix.TARGET }}-conan-
 
       - name: Install module dependencies
         run: make dep

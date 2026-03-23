@@ -40,6 +40,14 @@ jobs:
           echo "TARGET=${{ matrix.TARGET }}" >> $GITHUB_ENV
           echo "META_PATH=${{ matrix.META_PATH }}" >> $GITHUB_ENV
 
+      - name: Restore Conan cache
+        uses: actions/cache@v4
+        with:
+          path: .conan-home
+          key: ${{ runner.os }}-${{ matrix.TARGET }}-conan-${{ hashFiles('conanfile.py', 'Makefile') }}
+          restore-keys: |
+            ${{ runner.os }}-${{ matrix.TARGET }}-conan-
+
       - name: Clean build artifacts
         run: make clean
 
