@@ -32,32 +32,26 @@ CONAN_TEST_OUT := ./build-conan-test
 CONAN_BIN := $(CONAN_OUT)/build/Release/viam-csi
 CONAN_FLAGS := -s:a build_type=Release -s:a compiler.cppstd=17
 CONAN_TEST_OPT := -o "&:with_tests=True"
+CONAN_RUN = test -f $(VENV_DIR)/bin/activate && . $(VENV_DIR)/bin/activate; conan
 
 .PHONY: conan-setup conan-install conan-build conan-build-with-tests conan-test build-conan-binary
 
 conan-setup:
 	python3 -m venv $(VENV_DIR) 2>/dev/null || pip3 install conan --ignore-installed
-	test -f $(VENV_DIR)/bin/activate && . $(VENV_DIR)/bin/activate; pip install conan 2>/dev/null || true
-	test -f $(VENV_DIR)/bin/activate && . $(VENV_DIR)/bin/activate; \
-	conan profile detect --force
-	test -f $(VENV_DIR)/bin/activate && . $(VENV_DIR)/bin/activate; \
-	conan remote add viamconan https://viam.jfrog.io/artifactory/api/conan/viamconan --index 0 --force || true
+	$(CONAN_RUN) --version 2>/dev/null || pip install conan 2>/dev/null || true
+	$(CONAN_RUN) profile detect --force
+	$(CONAN_RUN) remote add viamconan https://viam.jfrog.io/artifactory/api/conan/viamconan --index 0 --force || true
 
 conan-install:
-	test -f $(VENV_DIR)/bin/activate && . $(VENV_DIR)/bin/activate; \
-	conan --version >/dev/null 2>&1 || $(MAKE) conan-setup
-	test -f $(VENV_DIR)/bin/activate && . $(VENV_DIR)/bin/activate; \
-	conan install . --output-folder=$(CONAN_OUT) --build=missing $(CONAN_FLAGS)
+	$(CONAN_RUN) --version >/dev/null 2>&1 || $(MAKE) conan-setup
+	$(CONAN_RUN) install . --output-folder=$(CONAN_OUT) --build=missing $(CONAN_FLAGS)
 
 conan-build:
-	test -f $(VENV_DIR)/bin/activate && . $(VENV_DIR)/bin/activate; \
-	conan build . --output-folder=$(CONAN_OUT) --build=none $(CONAN_FLAGS)
+	$(CONAN_RUN) build . --output-folder=$(CONAN_OUT) --build=none $(CONAN_FLAGS)
 
 conan-build-with-tests:
-	test -f $(VENV_DIR)/bin/activate && . $(VENV_DIR)/bin/activate; \
-	conan install . --output-folder=$(CONAN_TEST_OUT) --build=missing $(CONAN_FLAGS) $(CONAN_TEST_OPT)
-	test -f $(VENV_DIR)/bin/activate && . $(VENV_DIR)/bin/activate; \
-	conan build . --output-folder=$(CONAN_TEST_OUT) --build=none $(CONAN_FLAGS) $(CONAN_TEST_OPT)
+	$(CONAN_RUN) install . --output-folder=$(CONAN_TEST_OUT) --build=missing $(CONAN_FLAGS) $(CONAN_TEST_OPT)
+	$(CONAN_RUN) build . --output-folder=$(CONAN_TEST_OUT) --build=none $(CONAN_FLAGS) $(CONAN_TEST_OPT)
 
 conan-test: conan-install conan-build conan-build-with-tests
 	cd $(CONAN_TEST_OUT)/build/Release && \
@@ -89,10 +83,7 @@ lint:
 
 # Removes all build and bin artifacts.
 clean:
-	rm -rf $(BUILD_DIR) | true && \
-	rm -rf $(BIN_DIR) | true && \
-	rm -rf $(INSTALL_DIR) | true \
-	rm -rf ./etc/appimage-build | true && \
+	rm -rf $(BUILD_DIR) $(BIN_DIR) $(INSTALL_DIR) ./etc/appimage-build
 	rm -f ./etc/viam-csi-$(PACK_TAG)-aarch64.AppImage*
 
 # Copies binary and appimage to bin folder
