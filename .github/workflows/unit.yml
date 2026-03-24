@@ -21,7 +21,7 @@ jobs:
     strategy:
       matrix:
         include:
-          - container: ghcr.io/viam-modules/csi-camera/viam-cpp-base-jetson:0.0.6
+          - container: ghcr.io/viam-modules/csi-camera/viam-cpp-base-jetson:0.0.7
             TARGET: jetson
 
     container:
