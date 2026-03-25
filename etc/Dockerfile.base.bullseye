@@ -20,6 +20,7 @@ RUN apt-get -y --no-install-recommends install \
     less \
     ninja-build \
     pkg-config \
+    libssl-dev \
     software-properties-common \
     sudo \
     wget
