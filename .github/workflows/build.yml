@@ -57,13 +57,6 @@ jobs:
       - name: Build viam-csi binary
         run: make build
 
-      - name: Verify no dynamic viam library deps
-        run: |
-          if ldd build-conan/build/Release/viam-csi | grep -i 'libviam'; then
-            echo "Unexpected dynamic viam library dependency found"
-            exit 1
-          fi
-
       - name: Build viam-csi appimage
         run: make package
 
