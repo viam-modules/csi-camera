@@ -6,7 +6,7 @@ BIN_DIR := ./bin
 # Docker
 HUB_USER := viam-modules/csi-camera
 TEST_NAME := viam-csi-test
-BASE_TAG := 0.0.7
+BASE_TAG := 0.0.8
 
 # Package
 PACK_NAME := viam-csi
@@ -32,7 +32,7 @@ CONAN_TEST_OUT := ./build-conan-test
 CONAN_BIN := $(CONAN_OUT)/build/Release/viam-csi
 CONAN_FLAGS := -s:a build_type=Release -s:a compiler.cppstd=17
 CONAN_TEST_OPT := -o "&:with_tests=True"
-CONAN_RUN = test -f $(VENV_DIR)/bin/activate && . $(VENV_DIR)/bin/activate; conan
+CONAN_RUN = if [ -f $(VENV_DIR)/bin/activate ]; then . $(VENV_DIR)/bin/activate; fi; conan
 
 .PHONY: conan-setup conan-install conan-build conan-build-with-tests conan-test build-conan-binary
 
