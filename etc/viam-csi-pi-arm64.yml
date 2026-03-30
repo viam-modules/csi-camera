@@ -35,7 +35,6 @@ AppDir:
   files:
     include:
     - /lib/aarch64-linux-gnu/libc.so.6
-    - /usr/local/lib/libviamsdk.so.noabi
     - /lib/aarch64-linux-gnu/libpthread*
     - /usr/lib/aarch64-linux-gnu/gstreamer-1.0/*
     - /usr/lib/aarch64-linux-gnu/libcamera*
