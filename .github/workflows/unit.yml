@@ -17,11 +17,11 @@ on:
 jobs:
   unit-test:
     name: Unit Tests
-    runs-on: buildjet-2vcpu-ubuntu-2204-arm
+    runs-on: buildjet-8vcpu-ubuntu-2204-arm
     strategy:
       matrix:
         include:
-          - container: ghcr.io/viam-modules/csi-camera/viam-cpp-base-jetson:0.0.6
+          - container: ghcr.io/viam-modules/csi-camera/viam-cpp-base-jetson:0.0.8
             TARGET: jetson
 
     container:
@@ -37,14 +37,19 @@ jobs:
           echo "TARGET=${{ matrix.TARGET }}" >> $GITHUB_ENV
           echo "META_PATH=${{ matrix.META_PATH }}" >> $GITHUB_ENV
 
+      - name: Restore Conan cache
+        uses: actions/cache@v4
+        with:
+          path: .conan-home
+          key: ${{ runner.os }}-${{ matrix.TARGET }}-conan-${{ hashFiles('conanfile.py', 'Makefile') }}
+          restore-keys: |
+            ${{ runner.os }}-${{ matrix.TARGET }}-conan-
+
       - name: Install module dependencies
         run: make dep
 
-      - name: Build viam-csi binary
-        run: make build
-
-      - name: Run unit tests
-        run: |
-          export VIAM_CSI_DEVICE=${{ matrix.TARGET }}
-          export VIAM_CSI_TEST_MODE=1
-          ctest --test-dir build --rerun-failed --output-on-failure -VV
+      - name: Build and run unit tests
+        run: make conan-test TARGET=${{ matrix.TARGET }}
+        env:
+          VIAM_CSI_DEVICE: ${{ matrix.TARGET }}
+          VIAM_CSI_TEST_MODE: "1"

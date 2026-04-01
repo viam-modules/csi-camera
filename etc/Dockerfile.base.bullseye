@@ -18,13 +18,9 @@ RUN apt-get -y --no-install-recommends install \
     gnupg \
     gpg \
     less \
-    libboost-all-dev \
-    libgrpc++-dev \
-    libprotobuf-dev \
-    libssl-dev \
     ninja-build \
     pkg-config \
-    protobuf-compiler-grpc \
+    libssl-dev \
     software-properties-common \
     sudo \
     wget
@@ -44,23 +40,10 @@ RUN apt-get -y --no-install-recommends install -t llvm-toolchain-bullseye-15 \
 RUN apt-get -y --no-install-recommends install -t bullseye-backports \
     cmake
 
-# Install viam-cpp-sdk
-RUN mkdir -p ${HOME}/opt/src
-RUN cd ${HOME}/opt/src && \
-    git clone https://github.com/viamrobotics/viam-cpp-sdk && \
-    cd viam-cpp-sdk && \
-    git checkout releases/v0.19.0 && \
-    mkdir build && \
-    cd build && \
-    cmake .. -G Ninja && \
-    ninja all -j 3 && \
-    ninja install -j 3
-
-RUN cp -r ${HOME}/opt/src/viam-cpp-sdk/build/install/* /usr/local/
-
 # Install appimage-builder
+RUN mkdir -p ${HOME}/opt/src
 RUN apt-get install fakeroot libgtk-3-bin squashfs-tools -y
-RUN apt install python3-pip -y
+RUN apt install python3-pip python3-venv -y
 RUN pip install -U pip setuptools
 RUN pip install urllib3==1.26.12 requests==2.26.0
 RUN cd ${HOME}/opt/src && \

@@ -18,14 +18,10 @@ RUN apt-get -y --no-install-recommends install \
     gnupg \
     gpg \
     less \
-    libboost-all-dev \
-    libgrpc++-dev \
-    libprotobuf-dev \
-    libssl-dev \
     ninja-build \
     pkg-config \
-    protobuf-compiler \
-    protobuf-compiler-grpc \
+    python3-pip \
+    python3-venv \
     software-properties-common \
     sudo \
     wget
@@ -46,21 +42,8 @@ RUN apt-get -y --no-install-recommends install -t llvm-toolchain-jammy-15 \
 
 RUN apt-get -y install cmake
 
-# Install viam-cpp-sdk
-RUN mkdir -p ${HOME}/opt/src
-RUN cd ${HOME}/opt/src && \
-    git clone https://github.com/viamrobotics/viam-cpp-sdk && \
-    cd viam-cpp-sdk && \
-    git checkout releases/v0.19.0 && \
-    mkdir build && \
-    cd build && \
-    cmake .. -G Ninja -DCMAKE_POLICY_VERSION_MINIMUM=3.5 && \
-    ninja all -j 3 && \
-    ninja install -j 3
-
-RUN cp -r ${HOME}/opt/src/viam-cpp-sdk/build/install/* /usr/local/
-
 # Install appimage-builder
+RUN mkdir -p ${HOME}/opt/src
 RUN apt install -y \
     binutils \
     coreutils \

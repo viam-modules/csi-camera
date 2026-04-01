@@ -19,7 +19,6 @@ AppDir:
     exec_args: $@
   files:
     include:
-    - /usr/local/lib/libviamsdk.so.noabi
     - /lib/aarch64-linux-gnu/libpthread*
     exclude:
     - usr/share/doc
