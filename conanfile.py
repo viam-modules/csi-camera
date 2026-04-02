@@ -44,7 +44,7 @@ class ViamCsi(ConanFile):
 
     def requirements(self):
         # Phase 1 scope: migrate viam-cpp-sdk sourcing to Conan.
-        self.requires("viam-cpp-sdk/0.20.1")
+        self.requires("viam-cpp-sdk/0.33.1")
 
     def layout(self):
         cmake_layout(self, src_folder=".")

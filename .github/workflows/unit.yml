@@ -17,7 +17,7 @@ on:
 jobs:
   unit-test:
     name: Unit Tests
-    runs-on: buildjet-8vcpu-ubuntu-2204-arm
+    runs-on: github-linux-arm64-8core
     strategy:
       matrix:
         include:

@@ -13,11 +13,10 @@
 #include <viam/sdk/components/camera.hpp>
 #include <viam/sdk/config/resource.hpp>
 #include <viam/sdk/log/logging.hpp>
-#include <viam/sdk/resource/reconfigurable.hpp>
 
 #include "utils.h"
 
-class CSICamera : public viam::sdk::Camera, public viam::sdk::Reconfigurable {
+class CSICamera : public viam::sdk::Camera {
    private:
     // Device
     device_type device;
@@ -45,13 +44,12 @@ class CSICamera : public viam::sdk::Camera, public viam::sdk::Reconfigurable {
 
     // Camera
     // overrides camera component interface
-    void reconfigure(const viam::sdk::Dependencies& deps, const viam::sdk::ResourceConfig& cfg) override;
-    raw_image get_image(const std::string mime_type, const viam::sdk::ProtoStruct& extra) override;
     image_collection get_images(std::vector<std::string> /* filter_source_names */, const viam::sdk::ProtoStruct& /* extra */) override;
     viam::sdk::ProtoStruct do_command(const viam::sdk::ProtoStruct& command) override;
     point_cloud get_point_cloud(const std::string mime_type, const viam::sdk::ProtoStruct& extra) override;
     std::vector<viam::sdk::GeometryConfig> get_geometries(const viam::sdk::ProtoStruct& extra) override;
     properties get_properties() override;
+    viam::sdk::ProtoStruct get_status() override;
 
     // GST
     // helpers to manage GStreamer pipeline lifecycle

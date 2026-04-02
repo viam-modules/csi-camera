@@ -51,31 +51,14 @@ void CSICamera::set_attr(const ProtoStruct& attrs, const std::string& name, T CS
     }
 }
 
-void CSICamera::reconfigure(const Dependencies& deps, const ResourceConfig& cfg) {
-    VIAM_SDK_LOG(debug) << "Reconfiguring CSI Camera module";
-    stop_pipeline();
-    auto attrs = cfg.attributes();
-    init(attrs);
-}
-
-Camera::raw_image CSICamera::get_image(const std::string mime_type, const ProtoStruct& extra) {
+Camera::image_collection CSICamera::get_images(std::vector<std::string> /* filter_source_names */, const ProtoStruct& /* extra */) {
     raw_image image;
     image.mime_type = DEFAULT_OUTPUT_MIMETYPE;
     image.bytes = get_csi_image();
     if (image.bytes.empty()) {
         throw Exception("no bytes retrieved from get_csi_image");
     }
-
-    return image;
-}
-
-Camera::image_collection CSICamera::get_images(std::vector<std::string> /* filter_source_names */, const ProtoStruct& /* extra */) {
-    // filter_source_names and extra are unused because this camera provides a single image source
-    // and doesn't include any extra support for get_images
-    ProtoStruct empty_extra;
-    // If image is not available, an exception will be thrown
-    raw_image image = get_image(DEFAULT_OUTPUT_MIMETYPE, empty_extra);
-    image.source_name = "";  // empty string because we don't have multiple sources to differentiate
+    image.source_name = "";
 
     image_collection collection;
     collection.images = std::vector<raw_image>{std::move(image)};
@@ -108,6 +91,10 @@ Camera::properties CSICamera::get_properties() {
     p.intrinsic_parameters.width_px = width_px;
     p.intrinsic_parameters.height_px = height_px;
     return p;
+}
+
+ProtoStruct CSICamera::get_status() {
+    return ProtoStruct{};
 }
 
 void CSICamera::init_csi(const std::string pipeline_args) {
