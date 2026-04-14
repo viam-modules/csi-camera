@@ -11,20 +11,20 @@ using namespace viam::sdk;
 
 CSICamera::CSICamera(const std::string name, const ProtoStruct& attrs) : Camera(std::move(name)) {
     device = get_device_type();
-    VIAM_SDK_LOG(debug) << "Creating CSICamera with name: " << name;
-    VIAM_SDK_LOG(debug) << "Device type: " << device.name;
+    VIAM_RESOURCE_LOG(debug) << "Creating CSICamera";
+    VIAM_RESOURCE_LOG(debug) << "Device type: " << device.name;
     init(attrs);
 }
 
 CSICamera::~CSICamera() {
-    VIAM_SDK_LOG(debug) << "Destroying CSICamera";
+    VIAM_RESOURCE_LOG(debug) << "Destroying CSICamera";
     stop_pipeline();
 }
 
 void CSICamera::init(const ProtoStruct& attrs) {
     validate_attrs(attrs);
     auto pipeline_args = create_pipeline();
-    VIAM_SDK_LOG(debug) << "pipeline_args: " << pipeline_args;
+    VIAM_RESOURCE_LOG(debug) << "pipeline_args: " << pipeline_args;
     init_csi(pipeline_args);
 }
 
@@ -71,17 +71,17 @@ Camera::image_collection CSICamera::get_images(std::vector<std::string> /* filte
 }
 
 ProtoStruct CSICamera::do_command(const ProtoStruct& command) {
-    VIAM_SDK_LOG(warn) << "do_command not implemented";
+    VIAM_RESOURCE_LOG(warn) << "do_command not implemented";
     return ProtoStruct{};
 }
 
 Camera::point_cloud CSICamera::get_point_cloud(const std::string mime_type, const ProtoStruct& extra) {
-    VIAM_SDK_LOG(warn) << "get_point_cloud not implemented";
+    VIAM_RESOURCE_LOG(warn) << "get_point_cloud not implemented";
     return point_cloud{};
 }
 
 std::vector<GeometryConfig> CSICamera::get_geometries(const ProtoStruct& extra) {
-    VIAM_SDK_LOG(error) << "get_geometries not implemented";
+    VIAM_RESOURCE_LOG(warn) << "get_geometries not implemented";
     return std::vector<GeometryConfig>{};
 }
 
@@ -102,7 +102,7 @@ void CSICamera::init_csi(const std::string pipeline_args) {
     GError* error = nullptr;
     pipeline = gst_parse_launch(pipeline_args.c_str(), &error);
     if (!pipeline) {
-        VIAM_SDK_LOG(error) << "Failed to create the pipeline: " << error->message;
+        VIAM_RESOURCE_LOG(error) << "Failed to create the pipeline: " << error->message;
         g_error_free(error);
         throw Exception("Failed to create the pipeline");
     }
@@ -156,31 +156,31 @@ void CSICamera::wait_pipeline() {
     }
 
     if (ret == GST_STATE_CHANGE_SUCCESS) {
-        VIAM_SDK_LOG(debug) << "GST pipeline state change success";
+        VIAM_RESOURCE_LOG(debug) << "GST pipeline state change success";
     } else if (ret == GST_STATE_CHANGE_FAILURE) {
-        VIAM_SDK_LOG(error) << "GST pipeline failed to change state";
+        VIAM_RESOURCE_LOG(error) << "GST pipeline failed to change state";
         throw Exception("GST pipeline failed to change state");
     } else if (ret == GST_STATE_CHANGE_NO_PREROLL) {
-        VIAM_SDK_LOG(warn) << "GST pipeline changed but not enough data for preroll";
+        VIAM_RESOURCE_LOG(warn) << "GST pipeline changed but not enough data for preroll";
     } else {
-        VIAM_SDK_LOG(error) << "GST pipeline failed to change state";
+        VIAM_RESOURCE_LOG(error) << "GST pipeline failed to change state";
         throw Exception("GST pipeline failed to change state");
     }
 }
 
 void CSICamera::stop_pipeline() {
-    VIAM_SDK_LOG(debug) << "Stopping GST pipeline";
+    VIAM_RESOURCE_LOG(debug) << "Stopping GST pipeline";
 
     // Check if pipeline is defined
     if (pipeline == nullptr) {
-        VIAM_SDK_LOG(error) << "Pipeline is not defined";
+        VIAM_RESOURCE_LOG(error) << "Pipeline is not defined";
         return;
     }
 
     // Stop the pipeline
     if (gst_element_set_state(pipeline, GST_STATE_NULL) == GST_STATE_CHANGE_FAILURE) {
         // Don't throw, continue cleanup
-        VIAM_SDK_LOG(error) << "Failed to stop the pipeline";
+        VIAM_RESOURCE_LOG(error) << "Failed to stop the pipeline";
     }
 
     // Wait for async state change
@@ -188,7 +188,7 @@ void CSICamera::stop_pipeline() {
         wait_pipeline();
     } catch (const std::exception& e) {
         // Don't throw, continue cleanup
-        VIAM_SDK_LOG(error) << "Exception during wait_pipeline: " << e.what();
+        VIAM_RESOURCE_LOG(error) << "Exception during wait_pipeline: " << e.what();
     }
 
     // Free resources
@@ -205,7 +205,7 @@ void CSICamera::stop_pipeline() {
 
 void CSICamera::catch_pipeline(GstMessage* msg) {
     if (msg == nullptr) {
-        VIAM_SDK_LOG(debug) << "catch_pipeline called with null message";
+        VIAM_RESOURCE_LOG(debug) << "catch_pipeline called with null message";
         return;
     }
 
@@ -215,7 +215,7 @@ void CSICamera::catch_pipeline(GstMessage* msg) {
     switch (GST_MESSAGE_TYPE(msg)) {
         case GST_MESSAGE_ERROR: {
             gst_message_parse_error(msg, &error, &debugInfo);
-            VIAM_SDK_LOG(debug) << "Debug Info: " << debugInfo;
+            VIAM_RESOURCE_LOG(debug) << "Debug Info: " << debugInfo;
             std::string err_msg = error->message;
             g_error_free(error);
             g_free(debugInfo);
@@ -223,19 +223,19 @@ void CSICamera::catch_pipeline(GstMessage* msg) {
             throw Exception("GST pipeline error: " + err_msg);
         }
         case GST_MESSAGE_EOS:
-            VIAM_SDK_LOG(debug) << "End of stream received, stopping pipeline";
+            VIAM_RESOURCE_LOG(debug) << "End of stream received, stopping pipeline";
             stop_pipeline();
             throw Exception("End of stream received, pipeline stopped");
             break;
         case GST_MESSAGE_WARNING:
             gst_message_parse_warning(msg, &error, &debugInfo);
-            VIAM_SDK_LOG(warn) << "Warning: " << error->message;
-            VIAM_SDK_LOG(warn) << "Debug Info: " << debugInfo;
+            VIAM_RESOURCE_LOG(warn) << "Warning: " << error->message;
+            VIAM_RESOURCE_LOG(warn) << "Debug Info: " << debugInfo;
             break;
         case GST_MESSAGE_INFO:
             gst_message_parse_info(msg, &error, &debugInfo);
-            VIAM_SDK_LOG(info) << "Info: " << error->message;
-            VIAM_SDK_LOG(info) << "Debug Info: " << debugInfo;
+            VIAM_RESOURCE_LOG(info) << "Info: " << error->message;
+            VIAM_RESOURCE_LOG(info) << "Debug Info: " << debugInfo;
             break;
         default:
             // Ignore other message types
@@ -261,7 +261,7 @@ std::vector<unsigned char> CSICamera::get_csi_image() {
         if (buffer != nullptr) {
             vec = buff_to_vec(buffer);
         } else {
-            VIAM_SDK_LOG(warn) << "Failed to get buffer from sample";
+            VIAM_RESOURCE_LOG(warn) << "Failed to get buffer from sample";
         }
 
         // Release the sample
@@ -286,7 +286,7 @@ std::vector<unsigned char> CSICamera::get_csi_image() {
 std::string CSICamera::create_pipeline() const {
     const char* test_mode = std::getenv("VIAM_CSI_TEST_MODE");
     if (test_mode != nullptr && std::string(test_mode) == "1") {
-        VIAM_SDK_LOG(warn) << "CI Test mode enabled";
+        VIAM_RESOURCE_LOG(warn) << "CI Test mode enabled";
         return TEST_GST_PIPELINE;
     }
 
