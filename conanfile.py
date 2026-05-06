@@ -25,6 +25,8 @@ class ViamCsi(ConanFile):
         "main.cpp",
         "csi_camera.cpp",
         "csi_camera.h",
+        "csi_discovery.cpp",
+        "csi_discovery.h",
         "utils.cpp",
         "utils.h",
         "constraints.h",

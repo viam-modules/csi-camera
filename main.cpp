@@ -8,9 +8,11 @@
 #include <viam/sdk/module/service.hpp>
 #include <viam/sdk/registry/registry.hpp>
 #include <viam/sdk/resource/resource.hpp>
+#include <viam/sdk/services/discovery.hpp>
 
 #include "constraints.h"
 #include "csi_camera.h"
+#include "csi_discovery.h"
 #include "utils.h"
 
 using namespace viam::sdk;
@@ -39,6 +41,20 @@ int main(int argc, char* argv[]) try {
                                             });
 
     std::vector<std::shared_ptr<ModelRegistration>> mrs = {module_registration};
+
+    // Register the discovery model alongside the camera, but only on boards we actually
+    // know how to probe. On unknown hardware a discovery that returns nothing is just noise.
+    if (device.value != device_type::unknown) {
+        auto discovery_subtype = (device.value == device_type::pi) ? PI_API_SUBTYPE : JETSON_API_SUBTYPE;
+        auto discovery_registration = std::make_shared<ModelRegistration>(
+            API::get<Discovery>(),
+            Model{API_NAMESPACE, "discovery", discovery_subtype},
+            [](Dependencies, ResourceConfig resource_config) -> std::shared_ptr<Resource> {
+                return std::make_shared<CSIDiscovery>(resource_config.name());
+            });
+        mrs.push_back(discovery_registration);
+    }
+
     auto module_service = std::make_shared<ModuleService>(argc, argv, mrs);
 
     module_service->serve();
