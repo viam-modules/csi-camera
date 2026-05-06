@@ -46,12 +46,12 @@ int main(int argc, char* argv[]) try {
     // know how to probe. On unknown hardware a discovery that returns nothing is just noise.
     if (device.value != device_type::unknown) {
         auto discovery_subtype = (device.value == device_type::pi) ? PI_API_SUBTYPE : JETSON_API_SUBTYPE;
-        auto discovery_registration = std::make_shared<ModelRegistration>(
-            API::get<Discovery>(),
-            Model{API_NAMESPACE, "discovery", discovery_subtype},
-            [](Dependencies, ResourceConfig resource_config) -> std::shared_ptr<Resource> {
-                return std::make_shared<CSIDiscovery>(resource_config.name());
-            });
+        auto discovery_registration =
+            std::make_shared<ModelRegistration>(API::get<Discovery>(),
+                                                Model{API_NAMESPACE, "discovery", discovery_subtype},
+                                                [](Dependencies, ResourceConfig resource_config) -> std::shared_ptr<Resource> {
+                                                    return std::make_shared<CSIDiscovery>(resource_config.name());
+                                                });
         mrs.push_back(discovery_registration);
     }
 
