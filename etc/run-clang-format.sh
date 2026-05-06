@@ -41,4 +41,7 @@ else
 	fi
 fi
 
-find ./  -type f \( -name \*.cpp -o -name \*.h \)  | xargs "$CLANG_FORMAT" -i --style=file "$@"
+find . \
+    \( -path ./.conan-home -o -path ./build -o -path ./build-conan -o -path ./build-conan-test -o -path ./.venv -o -path ./venv -o -path ./bin \) -prune \
+    -o -type f \( -name '*.cpp' -o -name '*.h' \) -print \
+    | xargs "$CLANG_FORMAT" -i --style=file "$@"
