@@ -37,8 +37,7 @@ class CSICamera : public viam::sdk::Camera {
 
     // Latest-frame cache: written by the GStreamer streaming thread via the
     // appsink new-sample callback, read concurrently by any number of
-    // get_images callers. Consumers never pull from the appsink themselves,
-    // so one client's request cannot starve another's.
+    // get_images callers.
     std::mutex frame_mutex;
     std::condition_variable frame_cv;
     std::shared_ptr<const std::vector<unsigned char>> latest_frame;
