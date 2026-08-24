@@ -1,3 +1,4 @@
+#include <algorithm>
 #include <chrono>
 #include <cstring>
 #include <fstream>
@@ -52,18 +53,19 @@ void CSICamera::set_attr(const ProtoStruct& attrs, const std::string& name, T CS
 }
 
 Camera::image_collection CSICamera::get_images(std::vector<std::string> /* filter_source_names */, const ProtoStruct& /* extra */) {
+    auto frame = get_latest_frame();
+
     raw_image image;
     image.mime_type = DEFAULT_OUTPUT_MIMETYPE;
-    image.bytes = get_csi_image();
+    image.bytes = *frame.bytes;
     if (image.bytes.empty()) {
-        throw Exception("no bytes retrieved from get_csi_image");
+        throw Exception("no bytes retrieved from latest frame");
     }
     image.source_name = "";
 
     image_collection collection;
     collection.images = std::vector<raw_image>{std::move(image)};
-    auto now = std::chrono::system_clock::now();
-    auto duration_since_epoch = now.time_since_epoch();
+    auto duration_since_epoch = frame.captured_at.time_since_epoch();
     auto nanoseconds = std::chrono::duration_cast<std::chrono::nanoseconds>(duration_since_epoch);
     collection.metadata.captured_at = std::chrono::time_point<std::chrono::system_clock, std::chrono::nanoseconds>(nanoseconds);
 
@@ -113,6 +115,11 @@ void CSICamera::init_csi(const std::string pipeline_args) {
         gst_object_unref(pipeline);
         throw Exception("Failed to get the appsink element");
     }
+
+    // Store every frame in the latest-frame cache as it arrives, so that
+    // concurrent consumers read the cache instead of competing for samples
+    g_object_set(G_OBJECT(appsink), "emit-signals", TRUE, nullptr);
+    g_signal_connect(appsink, "new-sample", G_CALLBACK(&CSICamera::on_new_sample), this);
 
     // Start the pipeline
     if (gst_element_set_state(pipeline, GST_STATE_PLAYING) == GST_STATE_CHANGE_FAILURE) {
@@ -249,23 +256,49 @@ void CSICamera::catch_pipeline(GstMessage* msg) {
         g_free(debugInfo);
 }
 
-std::vector<unsigned char> CSICamera::get_csi_image() {
-    // Pull sample from appsink
-    std::vector<unsigned char> vec;
+GstFlowReturn CSICamera::on_new_sample(GstAppSink* /* sink */, gpointer user_data) {
+    return static_cast<CSICamera*>(user_data)->handle_new_sample();
+}
+
+GstFlowReturn CSICamera::handle_new_sample() {
     GstSample* sample = gst_app_sink_pull_sample(GST_APP_SINK(appsink));
-    if (sample != nullptr) {
-        // Retrieve buffer from the sample
-        GstBuffer* buffer = gst_sample_get_buffer(sample);
+    if (sample == nullptr) {
+        // appsink is flushing or reached EOS
+        return GST_FLOW_OK;
+    }
 
-        // Process or handle the buffer as needed
-        if (buffer != nullptr) {
-            vec = buff_to_vec(buffer);
-        } else {
-            VIAM_RESOURCE_LOG(warn) << "Failed to get buffer from sample";
+    GstBuffer* buffer = gst_sample_get_buffer(sample);
+    if (buffer != nullptr) {
+        // Must not throw across the GStreamer C callback boundary
+        try {
+            auto bytes = std::make_shared<const std::vector<unsigned char>>(buff_to_vec(buffer));
+            {
+                std::lock_guard<std::mutex> lock(frame_mutex);
+                latest_frame = std::move(bytes);
+                latest_frame_time = std::chrono::system_clock::now();
+            }
+            frame_cv.notify_all();
+        } catch (const std::exception& e) {
+            VIAM_RESOURCE_LOG(error) << "Failed to cache frame from appsink: " << e.what();
         }
+    } else {
+        VIAM_RESOURCE_LOG(warn) << "Failed to get buffer from sample";
+    }
 
-        // Release the sample
-        gst_sample_unref(sample);
+    gst_sample_unref(sample);
+    return GST_FLOW_OK;
+}
+
+std::chrono::milliseconds CSICamera::max_frame_age() const {
+    // Frames are expected every 1000/frame_rate ms; tolerate a few missed
+    // intervals before declaring the pipeline stalled, but never less than 1s
+    const int interval_ms = (frame_rate > 0) ? (1000 / frame_rate) : 1000;
+    return std::chrono::milliseconds(std::max(3 * interval_ms, 1000));
+}
+
+CSICamera::cached_frame CSICamera::get_latest_frame() {
+    if (pipeline == nullptr || bus == nullptr) {
+        throw Exception("GST pipeline is not running");
     }
 
     // Check bus for messages
@@ -280,7 +313,27 @@ std::vector<unsigned char> CSICamera::get_csi_image() {
         gst_message_unref(msg);
     }
 
-    return vec;
+    const auto max_age = max_frame_age();
+    std::unique_lock<std::mutex> lock(frame_mutex);
+    if (latest_frame == nullptr) {
+        // No frame has arrived since the pipeline started; give the source
+        // extra time to deliver its first frame
+        const auto first_frame_timeout = std::max(max_age, std::chrono::milliseconds(GST_CHANGE_STATE_TIMEOUT * 1000));
+        if (!frame_cv.wait_for(lock, first_frame_timeout, [this] { return latest_frame != nullptr; })) {
+            throw Exception("timed out waiting for first frame from GST pipeline");
+        }
+    }
+
+    const auto age = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now() - latest_frame_time);
+    if (age > max_age) {
+        throw Exception("latest frame is stale (" + std::to_string(age.count()) + "ms old): GST pipeline may have stalled");
+    }
+
+    return cached_frame{latest_frame, latest_frame_time};
+}
+
+std::vector<unsigned char> CSICamera::get_csi_image() {
+    return *get_latest_frame().bytes;
 }
 
 std::string CSICamera::create_pipeline() const {

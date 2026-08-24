@@ -1,5 +1,7 @@
 #include <gtest/gtest.h>
+#include <atomic>
 #include <cstdlib>
+#include <thread>
 #include <viam/sdk/common/instance.hpp>
 #include <viam/sdk/common/proto_convert.hpp>
 #include <viam/sdk/components/camera.hpp>
@@ -52,6 +54,55 @@ TEST(CSICamera, CreateCustom) {
     EXPECT_EQ(camera.get_height_px(), 480);
     EXPECT_EQ(camera.get_frame_rate(), 60);
     EXPECT_EQ(camera.get_video_path(), "1");
+
+    camera.stop_pipeline();
+}
+
+// Test that many concurrent consumers can each get frames: consumers read a
+// shared latest-frame cache, so one client's request does not consume the
+// frame another client is waiting on
+TEST(CSICamera, ConcurrentConsumers) {
+    ensure_runtime();
+
+    ProtoStruct attrs = std::unordered_map<std::string, ProtoValue>();
+    CSICamera camera("test", attrs);
+
+    constexpr int num_consumers = 8;
+    constexpr int images_per_consumer = 5;
+    std::atomic<int> successes{0};
+
+    std::vector<std::thread> consumers;
+    for (int i = 0; i < num_consumers; i++) {
+        consumers.emplace_back([&camera, &successes] {
+            for (int j = 0; j < images_per_consumer; j++) {
+                auto collection = camera.get_images({}, ProtoStruct{});
+                ASSERT_EQ(collection.images.size(), 1);
+                ASSERT_FALSE(collection.images[0].bytes.empty());
+                successes++;
+            }
+        });
+    }
+    for (auto& consumer : consumers) {
+        consumer.join();
+    }
+
+    EXPECT_EQ(successes.load(), num_consumers * images_per_consumer);
+
+    camera.stop_pipeline();
+}
+
+// Test that get_images reports the frame capture time, not the request time
+TEST(CSICamera, CapturedAtIsRecent) {
+    ensure_runtime();
+
+    ProtoStruct attrs = std::unordered_map<std::string, ProtoValue>();
+    CSICamera camera("test", attrs);
+
+    auto collection = camera.get_images({}, ProtoStruct{});
+    auto now = std::chrono::system_clock::now();
+    auto age = std::chrono::duration_cast<std::chrono::milliseconds>(now - collection.metadata.captured_at);
+    EXPECT_GE(age.count(), 0);
+    EXPECT_LE(age.count(), camera.max_frame_age().count());
 
     camera.stop_pipeline();
 }
