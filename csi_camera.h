@@ -1,7 +1,10 @@
 #pragma once
 
+#include <chrono>
+#include <condition_variable>
 #include <map>
 #include <memory>
+#include <mutex>
 #include <string>
 #include <vector>
 
@@ -32,6 +35,15 @@ class CSICamera : public viam::sdk::Camera {
     GstBus* bus = nullptr;
     GstElement* appsink = nullptr;
 
+    // Latest-frame cache: written by the GStreamer streaming thread via the
+    // appsink new-sample callback, read concurrently by any number of
+    // get_images callers. Consumers never pull from the appsink themselves,
+    // so one client's request cannot starve another's.
+    std::mutex frame_mutex;
+    std::condition_variable frame_cv;
+    std::shared_ptr<const std::vector<unsigned char>> latest_frame;
+    std::chrono::system_clock::time_point latest_frame_time;
+
    public:
     // Module
     explicit CSICamera(const std::string name, const viam::sdk::ProtoStruct& attrs);
@@ -59,9 +71,20 @@ class CSICamera : public viam::sdk::Camera {
     void catch_pipeline(GstMessage* msg);
 
     // Image
-    // helpers to pull and process images from appsink
+    // helpers to read frames from the latest-frame cache
+    struct cached_frame {
+        std::shared_ptr<const std::vector<unsigned char>> bytes;
+        std::chrono::system_clock::time_point captured_at;
+    };
+    cached_frame get_latest_frame();
+    std::chrono::milliseconds max_frame_age() const;
     std::vector<unsigned char> get_csi_image();
     std::vector<unsigned char> buff_to_vec(GstBuffer* buff);
+
+    // Appsink new-sample callback: invoked on the GStreamer streaming thread
+    // for every frame, stores it in the latest-frame cache
+    static GstFlowReturn on_new_sample(GstAppSink* sink, gpointer user_data);
+    GstFlowReturn handle_new_sample();
 
     // Getters
     int get_width_px() const;
