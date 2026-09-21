@@ -13,6 +13,7 @@ on:
     paths-ignore:
       - 'README.md'
       - 'docs/**'
+  workflow_dispatch: {}
 
 jobs:
   appimage:
