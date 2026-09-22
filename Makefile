@@ -20,7 +20,7 @@ ifeq ($(TARGET), jetson)
 	RECIPE=./viam-csi-jetson-arm64.yml
 else ifeq ($(TARGET), pi)
 	BASE_NAME=viam-cpp-base-pi
-	BASE_CONFIG=./etc/Dockerfile.base.bullseye
+	BASE_CONFIG=./etc/Dockerfile.base
 	RECIPE=./viam-csi-pi-arm64.yml
 endif
 
@@ -116,14 +116,7 @@ dep:
 			gstreamer1.0-plugins-bad \
 			gstreamer1.0-plugins-ugly \
 			libgstreamer-plugins-base1.0-dev && \
-		apt-get -y install libgtest-dev && \
-		cd /usr/src/gtest && \
-		cmake ./ && \
-		make && \
-		apt-get install libgmock-dev && \
-		cd /usr/src/googletest/googlemock/ && \
-		cmake ./ && \
-		make && \
+		apt-get -y install libgtest-dev libgmock-dev libgtk-3-bin && \
 		mkdir -p ${HOME}/opt/src && \
 		apt-get -y install meson && \
 		apt-get -y install libyaml-dev python3-yaml python3-ply python3-jinja2 && \

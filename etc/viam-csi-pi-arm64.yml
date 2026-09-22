@@ -22,10 +22,9 @@ AppDir:
     - arm64
     allow_unauthenticated: true
     sources:
-    - sourceline: deb http://deb.debian.org/debian bullseye main contrib non-free
-    - sourceline: deb http://security.debian.org/debian-security bullseye-security main contrib non-free
-    - sourceline: deb http://deb.debian.org/debian bullseye-updates main contrib non-free
-    - sourceline: deb http://archive.raspberrypi.org/debian/ bullseye main
+    - sourceline: deb [arch=arm64] http://ports.ubuntu.com/ubuntu-ports jammy main universe
+    - sourceline: deb [arch=arm64] http://ports.ubuntu.com/ubuntu-ports jammy-updates main universe
+    - sourceline: deb [arch=arm64] http://ports.ubuntu.com/ubuntu-ports jammy-security main universe
     include:
     - libgstreamer1.0-0:arm64
     - gstreamer1.0-x:arm64
