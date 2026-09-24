@@ -6,11 +6,12 @@ jobs:
   publish:
     runs-on: github-linux-arm64-8core
     strategy:
-     matrix:
+      fail-fast: false
+      matrix:
         include:
-          # - container: ghcr.io/viam-modules/csi-camera/viam-cpp-base-jetson:0.0.8
-          #   TARGET: jetson
-          #   META_PATH: meta.json
+          - container: ghcr.io/viam-modules/csi-camera/viam-cpp-base-jetson:0.0.8
+            TARGET: jetson
+            META_PATH: meta.json
           # pi builds on the jammy base image now that debian bullseye is EOL.
           - container: ghcr.io/viam-modules/csi-camera/viam-cpp-base-jetson:0.0.8
             TARGET: pi
