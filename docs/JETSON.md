@@ -2,7 +2,7 @@
 
 ## Dependencies
 
-On Jetson devices, GStreamer and Libargus plugin comes packaged with Jetpack. The appimage will dynamically link out to Gstreamer at runtime.
+On Jetson devices, GStreamer and the Libargus plugin come packaged with JetPack. The module links against them at runtime; nothing else needs to be installed. JetPack 5 or newer is required (glibc 2.31+).
 
 ___
 

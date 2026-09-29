@@ -18,7 +18,7 @@ ___
 
 ### Requirements
 
-The `csi-cam` module is distributed as an AppImage. AppImages require FUSE version 2 to run. See [FUSE troubleshooting](https://github.com/AppImage/AppImageKit/wiki/FUSE) for instructions on installing FUSE 2 on your system if it is not already installed. On Debian and Ubuntu systems, the libfuse2 library is automatically installed before the module starts.
+The `csi-cam` module links against the GStreamer libraries and Argus plugin that ship with JetPack; nothing else needs to be installed. See [JETSON.md](./docs/JETSON.md).
 
 Currently, the `csi-cam` module supports the Linux arm64 platforms only.
 

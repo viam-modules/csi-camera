@@ -20,7 +20,7 @@ import (
 
 const (
 	componentName       = "csi-cam-1"
-	modulePath          = "../../etc"
+	modulePath          = "../../module"
 	testTimeoutDuration = 5 * time.Second
 	testTickDuration    = 100 * time.Millisecond
 )
@@ -45,22 +45,15 @@ func TestCameraServer(t *testing.T) {
 	logger := logging.NewLogger("csi-cam-tests")
 	logger.Info("Starting CSI Camera Integration Tests")
 
-	// Get absolute path to module
-	cwd, err := os.Getwd()
-	test.That(t, err, test.ShouldBeNil)
-
-	// Try to find extracted AppImage first (CI), then fall back to AppImage (local)
-	etcPath := filepath.Join(cwd, modulePath)
-	absModulePath := filepath.Join(etcPath, "squashfs-root", "AppRun")
-
-	// Check if extracted version exists (CI)
-	if _, err := os.Stat(absModulePath); os.IsNotExist(err) {
-		// Fall back to AppImage (local development)
-		files, err := filepath.Glob(filepath.Join(etcPath, "*.AppImage"))
-		if err != nil || len(files) == 0 {
-			t.Fatalf("Failed to find AppImage or extracted AppRun in %s: %v", etcPath, err)
-		}
-		absModulePath = files[0]
+	// VIAM_CSI_MODULE_PATH overrides; default is module.tar.gz unpacked into ./module
+	absModulePath := os.Getenv("VIAM_CSI_MODULE_PATH")
+	if absModulePath == "" {
+		cwd, err := os.Getwd()
+		test.That(t, err, test.ShouldBeNil)
+		absModulePath = filepath.Join(cwd, modulePath, "viam-csi")
+	}
+	if _, err := os.Stat(absModulePath); err != nil {
+		t.Fatalf("Module binary not found at %s: %v", absModulePath, err)
 	}
 	logger.Infof("Using module path: %s", absModulePath)
 

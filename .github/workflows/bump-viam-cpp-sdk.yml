@@ -56,12 +56,21 @@ jobs:
 
       - name: Regenerate conan.lock (if present)
         if: steps.versions.outputs.needed == 'true' && hashFiles('conan.lock') != ''
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
           python3 -m pip install --quiet --upgrade conan
           conan profile detect --force
           conan remote add viamconan https://viam.jfrog.io/artifactory/api/conan/viamconan --index 0 || true
-          conan lock create . -o "&:with_tests=False" -s:a build_type=Release -s:a compiler.cppstd=17
+          conan export etc/conan/gstreamer
+          # Seed from the SDK release's lockfile so transitive revisions match
+          # the binaries published to viamconan. with_tests keeps gtest locked.
+          gh release download "releases/v${{ steps.versions.outputs.latest }}" \
+            --repo viamrobotics/viam-cpp-sdk --pattern conan.lock --output sdk.lock
+          conan lock create . -o "&:with_tests=True" -s:a build_type=Release -s:a compiler.cppstd=17 \
+            --lockfile sdk.lock --lockfile-partial --lockfile-out conan.lock
+          rm sdk.lock
 
       - name: Open / update pull request
         if: steps.versions.outputs.needed == 'true'
