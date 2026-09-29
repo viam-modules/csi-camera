@@ -12,18 +12,6 @@ Raspberry Pi OS Bullseye and newer. The repo's `.canon.yaml` selects it:
 canon            # drops into the focal image
 ```
 
-## Dependencies
-
-- `viam-cpp-sdk`: static, from `viamconan`, pinned in `conanfile.py` / `conan.lock`.
-- `gstreamer`: the host's copy, via the in-repo `gstreamer/system` recipe in
-  [`etc/conan/gstreamer`](../etc/conan/gstreamer/conanfile.py). The camera
-  source plugins (`nvarguscamerasrc`, `libcamerasrc`) exist only on the device
-  and load the device's `libgstreamer`, so the module must link that same copy.
-  The recipe apt-installs the `-dev` packages and fills `cpp_info` from
-  `pkg-config`. `bin/build.sh` exports it before building.
-- `libcamera`: never linked. Runtime-only, through the Pi OS
-  `gstreamer1.0-libcamera` plugin that `first_run.sh` installs.
-
 ## Build the module tarball
 
 ```bash
