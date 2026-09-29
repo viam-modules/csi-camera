@@ -44,47 +44,10 @@ jobs:
           path: module.tar.gz
           retention-days: 7
 
-  integration:
-    name: Integration tests
-    needs: build
-    runs-on: github-linux-arm64-8core
-    container:
-      image: ghcr.io/viamrobotics/cpp-sdk-conan-ubuntu:focal
-      options: --platform linux/arm64
-    steps:
-      - name: Check out code
-        uses: actions/checkout@v4
-
-      - name: Download module artifact
-        uses: actions/download-artifact@v4
-        with:
-          name: module-pi
-          path: .
-
-      - name: Unpack module
-        run: mkdir -p module && tar xzf module.tar.gz -C module
-
-      # Test-mode pipeline: videotestsrc ! videoconvert ! jpegenc ! appsink
-      - name: Install gstreamer runtime
-        run: apt-get update && apt-get install -y --no-install-recommends gstreamer1.0-plugins-base gstreamer1.0-plugins-good
-
-      - uses: actions/setup-go@v5
-        with:
-          go-version-file: tests/integration/go.mod
-          cache-dependency-path: tests/integration/go.sum
-
-      - name: Run integration tests
-        working-directory: tests/integration
-        env:
-          VIAM_CSI_DEVICE: pi
-          VIAM_CSI_TEST_MODE: "1"
-          VIAM_CSI_MODULE_PATH: ${{ github.workspace }}/module/viam-csi
-        run: go test -v -timeout 10m
-
   upload:
     name: Upload modules to registry
     if: github.event_name == 'release'
-    needs: [build, integration]
+    needs: build
     runs-on: ubuntu-latest
     strategy:
       matrix:

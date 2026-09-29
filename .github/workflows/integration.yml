@@ -1,0 +1,53 @@
+name: Integration Tests
+
+on:
+  workflow_run:
+    workflows: ["Build"]
+    types: [completed]
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  integration-test:
+    name: Integration Tests
+    runs-on: github-linux-arm64-8core
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}
+    container:
+      image: ghcr.io/viamrobotics/cpp-sdk-conan-ubuntu:focal
+      options: --platform linux/arm64
+
+    steps:
+      - name: Check out code
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.workflow_run.head_sha }}
+
+      - name: Download module artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: module-pi
+          path: .
+          run-id: ${{ github.event.workflow_run.id }}
+          github-token: ${{ github.token }}
+
+      - name: Unpack module
+        run: mkdir -p module && tar xzf module.tar.gz -C module
+
+      # Test-mode pipeline: videotestsrc ! videoconvert ! jpegenc ! appsink
+      - name: Install gstreamer runtime
+        run: apt-get update && apt-get install -y --no-install-recommends gstreamer1.0-plugins-base gstreamer1.0-plugins-good
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: tests/integration/go.mod
+          cache-dependency-path: tests/integration/go.sum
+
+      - name: Run integration tests
+        working-directory: tests/integration
+        env:
+          VIAM_CSI_DEVICE: pi
+          VIAM_CSI_TEST_MODE: "1"
+          VIAM_CSI_MODULE_PATH: ${{ github.workspace }}/module/viam-csi
+        run: go test -v -timeout 10m
