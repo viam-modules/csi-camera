@@ -44,14 +44,3 @@ cd tests/integration && VIAM_CSI_DEVICE=pi VIAM_CSI_TEST_MODE=1 go test -v
 make lint
 ```
 
-## Updating the SDK pin
-
-`bump-viam-cpp-sdk.yml` opens a PR daily when a newer SDK release exists. It
-re-seeds `conan.lock` from the SDK release's `conan.lock` so transitive
-revisions match the binaries on `viamconan`. To do it by hand:
-
-```bash
-gh release download releases/vX.Y.Z --repo viamrobotics/viam-cpp-sdk --pattern conan.lock --output sdk.lock
-conan export etc/conan/gstreamer
-conan lock create . -o "&:with_tests=True" --lockfile sdk.lock --lockfile-partial --lockfile-out conan.lock
-```
