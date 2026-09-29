@@ -7,6 +7,8 @@ BIN_DIR := ./bin
 HUB_USER := viam-modules/csi-camera
 TEST_NAME := viam-csi-test
 BASE_TAG := 0.0.8
+# Content id baked into the base image; keys the CI conan cache to image content.
+BASE_BUILD_ID := $(shell git rev-parse --short HEAD)
 
 # Package
 PACK_NAME := viam-csi
@@ -138,6 +140,7 @@ dep:
 # Builds docker image with viam-cpp-sdk and helpers.
 image-base:
 	docker build -t $(BASE_NAME):$(BASE_TAG) \
+		--build-arg BASE_BUILD_ID=$(BASE_BUILD_ID) \
 		--memory=16g \
 		-f $(BASE_CONFIG) ./
 
@@ -174,4 +177,6 @@ push-package:
 # Requires docker login to ghcr.io
 push-base:
 	docker tag $(BASE_NAME):$(BASE_TAG) ghcr.io/$(HUB_USER)/$(BASE_NAME):$(BASE_TAG) && \
-	docker push ghcr.io/$(HUB_USER)/$(BASE_NAME):$(BASE_TAG)
+	docker push ghcr.io/$(HUB_USER)/$(BASE_NAME):$(BASE_TAG) && \
+	docker tag $(BASE_NAME):$(BASE_TAG) ghcr.io/$(HUB_USER)/$(BASE_NAME):latest && \
+	docker push ghcr.io/$(HUB_USER)/$(BASE_NAME):latest
