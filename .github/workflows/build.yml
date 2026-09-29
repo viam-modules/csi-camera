@@ -16,15 +16,12 @@ on:
 permissions:
   contents: read
 
-env:
-  # focal has the lowest glibc (2.31) of the cpp-sdk-conan images, so one
-  # binary runs on JetPack 5/6 and Raspberry Pi OS bullseye and newer.
-  BUILD_IMAGE: ghcr.io/viamrobotics/cpp-sdk-conan-ubuntu:focal
-
 jobs:
   build:
     name: Build ${{ matrix.target }} module.tar.gz
     runs-on: github-linux-arm64-8core
+    # focal has the lowest glibc (2.31) of the cpp-sdk-conan images, so one
+    # binary runs on JetPack 5/6 and Raspberry Pi OS bullseye and newer.
     container:
       image: ghcr.io/viamrobotics/cpp-sdk-conan-ubuntu:focal
       options: --platform linux/arm64
