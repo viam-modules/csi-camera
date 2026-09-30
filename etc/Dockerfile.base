@@ -75,3 +75,7 @@ RUN apt-get -y install \
         $(lsb_release -cs) stable" | tee /etc/apt/sources.list.d/docker.list > /dev/null && \ 
     apt-get -y update && \
     apt-get -y install docker-ce docker-ce-cli containerd.io
+
+# Stamp image with the build's git sha so CI can key the conan cache to image content.
+ARG BASE_BUILD_ID=dev
+RUN echo "${BASE_BUILD_ID}" > /etc/viam-base-build-id
