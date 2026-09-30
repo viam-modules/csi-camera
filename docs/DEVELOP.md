@@ -1,7 +1,7 @@
 # Develop
 
 ## Base Images
-The `base` images contains minimal dependency for viam-cpp-sdk module development. This repository includes a [`jammy`](../etc/Dockerfile.base) and [`bullseye`](../etc/Dockerfile.base.bullseye) base image for the `jetson` and `pi` targets respectively. Base images include the following dependencies:
+The `base` images contains minimal dependency for viam-cpp-sdk module development. Both the `jetson` and `pi` targets build from the [`jammy`](../etc/Dockerfile.base) base image (the legacy [`bullseye`](../etc/Dockerfile.base.bullseye) image is EOL and unused). Base images include the following dependencies:
 - `viam-cpp-sdk` for building the module binary
 - `appimage-builder` for packaging into an appimage
 
@@ -9,8 +9,12 @@ The `base` images contains minimal dependency for viam-cpp-sdk module developmen
 make TARGET=[pi/jetson] image-base # Rebuild base image
 ```
 
+Bump `BASE_TAG` in the `Makefile` before publishing a new release; `push-base`
+refuses to overwrite an existing semver tag. It pushes both the semver tag and
+`latest`.
+
 ```bash
-make TARGET=[pi/jetson] push # Push updated base image to container registry
+make TARGET=[pi/jetson] push-base # Push updated base image to container registry
 ```
 
 ## Build Locally with Canon

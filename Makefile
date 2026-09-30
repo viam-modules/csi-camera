@@ -175,7 +175,12 @@ push-package:
 
 # Pushes base docker image to github packages.
 # Requires docker login to ghcr.io
+# Refuses to clobber an existing semver tag; bump BASE_TAG for a new release.
 push-base:
+	@if docker manifest inspect ghcr.io/$(HUB_USER)/$(BASE_NAME):$(BASE_TAG) >/dev/null 2>&1; then \
+		echo "ERROR: $(BASE_NAME):$(BASE_TAG) already exists in ghcr. Bump BASE_TAG."; \
+		exit 1; \
+	fi
 	docker tag $(BASE_NAME):$(BASE_TAG) ghcr.io/$(HUB_USER)/$(BASE_NAME):$(BASE_TAG) && \
 	docker push ghcr.io/$(HUB_USER)/$(BASE_NAME):$(BASE_TAG) && \
 	docker tag $(BASE_NAME):$(BASE_TAG) ghcr.io/$(HUB_USER)/$(BASE_NAME):latest && \
