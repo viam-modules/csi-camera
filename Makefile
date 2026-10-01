@@ -6,7 +6,7 @@ BIN_DIR := ./bin
 # Docker
 HUB_USER := viam-modules/csi-camera
 TEST_NAME := viam-csi-test
-BASE_TAG := 0.0.8
+BASE_TAG := 0.0.9
 # Content id baked into the base image; keys the CI conan cache to image content.
 BASE_BUILD_ID := $(shell git rev-parse --short HEAD)
 
