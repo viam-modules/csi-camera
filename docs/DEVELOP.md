@@ -1,43 +1,46 @@
 # Develop
 
-## Base Images
-The `base` images contains minimal dependency for viam-cpp-sdk module development. Both the `jetson` and `pi` targets build from the [`jammy`](../etc/Dockerfile.base) base image (the legacy [`bullseye`](../etc/Dockerfile.base.bullseye) image is EOL and unused). Base images include the following dependencies:
-- `viam-cpp-sdk` for building the module binary
-- `appimage-builder` for packaging into an appimage
+Builds use [Conan](https://conan.io) for dependencies and CMake for everything
+else, packaged as `module.tar.gz` (binary, `meta.json`, `first_run.sh`).
+
+Build inside the `ghcr.io/viamrobotics/cpp-sdk-conan-ubuntu:focal` image: its
+baked `default` profile and `viamconan` remote are the toolchain of record, and
+focal's glibc 2.31 is the floor that lets one binary run on JetPack 5/6 and
+Raspberry Pi OS Bullseye and newer. The repo's `.canon.yaml` selects it:
 
 ```bash
-make TARGET=[pi/jetson] image-base # Rebuild base image
+canon            # drops into the focal image
 ```
 
-Bump `BASE_TAG` in the `Makefile` before publishing a new release; `push-base`
-refuses to overwrite an existing semver tag. It pushes both the semver tag and
-`latest`.
+## Build the module tarball
 
 ```bash
-make TARGET=[pi/jetson] push-base # Push updated base image to container registry
+TARGET=jetson ./bin/build.sh   # or TARGET=pi; picks which meta.json is packaged
 ```
 
-## Build Locally with Canon
-
-```bash
-canon -profile=[csi-pi/csi-jetson] # Loads base image with Canon
-```
+## Build and test
 
 ```bash
-make dep TARGET=[pi/jetson] # Install platform specific dependencies
-```
-- Jetson:
-    - `gstreamer`
-- Pi:
-    - `gstreamer`
-    - `libcamera`
-
-```bash
-make build # Build binary
+make test                      # conan install with tests, cmake presets, ctest
 ```
 
+Tests run in `VIAM_CSI_TEST_MODE=1`, which swaps the camera source for
+`videotestsrc`, so they need `gstreamer1.0-plugins-base` and
+`gstreamer1.0-plugins-good` installed.
+
+## Integration tests
+
 ```bash
-make package TARGET=[pi/jetson] # Build appiamge
+TARGET=pi ./bin/build.sh
+mkdir -p module && tar xzf module.tar.gz -C module
+cd tests/integration && VIAM_CSI_DEVICE=pi VIAM_CSI_TEST_MODE=1 go test -v
 ```
-- Jetson appimage [recipe](../etc/viam-csi-jetson-arm64.yml)
-- Pi appimage [recipe](../etc/viam-csi-pi-arm64.yml)
+
+`VIAM_CSI_MODULE_PATH` overrides the binary location.
+
+## Lint
+
+```bash
+make lint
+```
+

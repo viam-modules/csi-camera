@@ -3,7 +3,7 @@ import re
 from conan import ConanFile
 from conan.tools.build import check_min_cppstd
 from conan.tools.cmake import CMake, CMakeDeps, CMakeToolchain, cmake_layout
-from conan.tools.files import load
+from conan.tools.files import copy, load
 
 
 class ViamCsi(ConanFile):
@@ -13,9 +13,12 @@ class ViamCsi(ConanFile):
     package_type = "application"
 
     settings = "os", "compiler", "build_type", "arch"
-    options = {"with_tests": [True, False]}
+    # `target` only selects which meta.json lands in module.tar.gz; the binary
+    # detects jetson vs pi at runtime.
+    options = {"with_tests": [True, False], "target": ["jetson", "pi"]}
     default_options = {
         "with_tests": False,
+        "target": "jetson",
         "viam-cpp-sdk/*:shared": False,
     }
 
@@ -28,6 +31,9 @@ class ViamCsi(ConanFile):
         "utils.cpp",
         "utils.h",
         "constraints.h",
+        "meta.json",
+        "meta-pi.json",
+        "first_run.sh",
         "tests/*",
     )
 
@@ -43,8 +49,13 @@ class ViamCsi(ConanFile):
         check_min_cppstd(self, 17)
 
     def requirements(self):
-        # Phase 1 scope: migrate viam-cpp-sdk sourcing to Conan.
         self.requires("viam-cpp-sdk/0.41.1")
+        # Host gstreamer; recipe lives in etc/conan/gstreamer (see bin/build.sh).
+        self.requires("gstreamer/system")
+
+    def build_requirements(self):
+        if self.options.with_tests:
+            self.test_requires("gtest/1.16.0")
 
     def layout(self):
         cmake_layout(self, src_folder=".")
@@ -52,6 +63,7 @@ class ViamCsi(ConanFile):
     def generate(self):
         tc = CMakeToolchain(self)
         tc.variables["VIAM_CSI_ENABLE_TESTS"] = self.options.with_tests
+        tc.variables["VIAM_CSI_TARGET"] = str(self.options.target)
         tc.generate()
         CMakeDeps(self).generate()
 
@@ -63,3 +75,10 @@ class ViamCsi(ConanFile):
     def package(self):
         cmake = CMake(self)
         cmake.install()
+
+        # CPack assembles module.tar.gz from the CMake install rules
+        cmake.build(target="package")
+        copy(self, "module.tar.gz", src=self.build_folder, dst=self.package_folder)
+
+    def deploy(self):
+        copy(self, "module.tar.gz", src=self.package_folder, dst=self.deploy_folder)

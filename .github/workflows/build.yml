@@ -1,71 +1,78 @@
-name: Build Latest
+name: Build
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
 on:
-  push:
-    branches: 
-      - '*'
-    paths-ignore:
-      - 'README.md'
-      - 'docs/**'
+  release:
+    types: [published]
+  workflow_dispatch:
   pull_request:
+  push:
     branches:
-      - '*'
-    paths-ignore:
-      - 'README.md'
-      - 'docs/**'
-  workflow_dispatch: {}
+      - main
+
+permissions:
+  contents: read
 
 jobs:
-  appimage:
-    name: Build
+  build:
+    name: Build ${{ matrix.target }} module.tar.gz
     runs-on: github-linux-arm64-8core
+    # focal has the lowest glibc (2.31) of the cpp-sdk-conan images, so one
+    # binary runs on JetPack 5/6 and Raspberry Pi OS bullseye and newer.
+    container:
+      image: ghcr.io/viamrobotics/cpp-sdk-conan-ubuntu:focal
+      options: --platform linux/arm64
+    strategy:
+      fail-fast: false
+      matrix:
+        # Same binary; only the packaged meta.json differs.
+        target: [jetson, pi]
+    steps:
+      - name: Check out code
+        uses: actions/checkout@v4
+
+      - name: Build
+        run: TARGET=${{ matrix.target }} ./bin/build.sh
+
+      - name: Upload module artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: module-${{ matrix.target }}
+          path: module.tar.gz
+          retention-days: 7
+
+  upload:
+    name: Upload modules to registry
+    if: github.event_name == 'release'
+    needs: build
+    runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
         include:
-          - container: ghcr.io/viam-modules/csi-camera/viam-cpp-base-jetson:0.0.8
-            TARGET: jetson
-            META_PATH: meta.json
-          # pi builds on the jammy base image now that debian bullseye is EOL.
-          - container: ghcr.io/viam-modules/csi-camera/viam-cpp-base-jetson:0.0.8
-            TARGET: pi
-            META_PATH: meta-pi.json
-    container:
-      image: ${{ matrix.container }}
-      options: --platform linux/arm64
-
+          - target: jetson
+            meta-path: meta.json
+          - target: pi
+            meta-path: meta-pi.json
     steps:
       - name: Check out code
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
-      - name: Set environment variables
-        run: |
-          echo "TARGET=${{ matrix.TARGET }}" >> $GITHUB_ENV
-          echo "META_PATH=${{ matrix.META_PATH }}" >> $GITHUB_ENV
-
-      - name: Restore Conan cache
-        uses: actions/cache@v4
+      - name: Download module artifact
+        uses: actions/download-artifact@v4
         with:
-          path: .conan-home
-          key: ${{ runner.os }}-${{ matrix.TARGET }}-conan-${{ hashFiles('conanfile.py', 'Makefile') }}
-          restore-keys: |
-            ${{ runner.os }}-${{ matrix.TARGET }}-conan-
+          name: module-${{ matrix.target }}
+          path: ./artifacts/${{ matrix.target }}/
 
-      - name: Clean build artifacts
-        run: make clean
-
-      - name: Install module dependencies
-        run: make dep
-
-      - name: Build viam-csi binary
-        run: make build
-
-      - name: Build viam-csi appimage
-        run: make package
-
-      - name: Upload AppImage artifact
-        uses: actions/upload-artifact@v4
+      - name: Upload module to registry
+        uses: viamrobotics/upload-module@main
         with:
-          name: viam-csi-${{ matrix.TARGET }}-appimage
-          path: etc/*.AppImage
-          retention-days: 1
+          meta-path: ${{ matrix.meta-path }}
+          module-path: ./artifacts/${{ matrix.target }}/module.tar.gz
+          platform: linux/arm64
+          version: ${{ github.ref_name }}
+          key-id: ${{ secrets.viam_key_id }}
+          key-value: ${{ secrets.viam_key_value }}

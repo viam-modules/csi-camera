@@ -1,55 +1,56 @@
 name: Unit Tests
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 on:
+  workflow_dispatch:
+  pull_request:
   push:
     branches:
-      - '*'
-    paths-ignore:
-      - 'README.md'
-      - 'docs/**'
-  pull_request:
-    branches:
-      - '*'
-    paths-ignore:
-      - 'README.md'
-      - 'docs/**'
+      - main
 
 jobs:
   unit-test:
-    name: Unit Tests
-    runs-on: github-linux-arm64-8core
+    name: Unit Tests (${{ matrix.platform }})
+    timeout-minutes: 30
+    runs-on: ${{ matrix.runner }}
+    container:
+      image: ghcr.io/viamrobotics/cpp-sdk-conan-ubuntu:focal
+      options: --platform ${{ matrix.platform }}
     strategy:
+      fail-fast: false
       matrix:
         include:
-          - container: ghcr.io/viam-modules/csi-camera/viam-cpp-base-jetson:0.0.8
-            TARGET: jetson
-
-    container:
-      image: ${{ matrix.container }}
-      options: --platform linux/arm64
-
+          - runner: github-linux-arm64-8core
+            platform: linux/arm64
+          - runner: ubuntu-latest
+            platform: linux/amd64
     steps:
       - name: Check out code
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
-      - name: Set environment variables
-        run: |
-          echo "TARGET=${{ matrix.TARGET }}" >> $GITHUB_ENV
-          echo "META_PATH=${{ matrix.META_PATH }}" >> $GITHUB_ENV
+      - name: Show conan profile
+        run: conan profile show
 
-      - name: Restore Conan cache
-        uses: actions/cache@v4
-        with:
-          path: .conan-home
-          key: ${{ runner.os }}-${{ matrix.TARGET }}-conan-${{ hashFiles('conanfile.py', 'Makefile') }}
-          restore-keys: |
-            ${{ runner.os }}-${{ matrix.TARGET }}-conan-
+      - name: Export host gstreamer recipe
+        run: conan export etc/conan/gstreamer
 
-      - name: Install module dependencies
-        run: make dep
+      - name: Install Conan dependencies
+        run: >
+          conan install . -o "&:with_tests=True" --build=missing
+          -c tools.system.package_manager:mode=install
 
-      - name: Build and run unit tests
-        run: make conan-test TARGET=${{ matrix.TARGET }}
+      # Test-mode pipeline: videotestsrc ! videoconvert ! jpegenc ! appsink
+      - name: Install gstreamer runtime plugins
+        run: apt-get update && apt-get install -y --no-install-recommends gstreamer1.0-plugins-base gstreamer1.0-plugins-good
+
+      - name: Build and run tests
         env:
-          VIAM_CSI_DEVICE: ${{ matrix.TARGET }}
+          VIAM_CSI_DEVICE: jetson
           VIAM_CSI_TEST_MODE: "1"
+        run: |
+          cmake --preset conan-release
+          cmake --build --preset conan-release
+          ctest --test-dir build/Release --output-on-failure
