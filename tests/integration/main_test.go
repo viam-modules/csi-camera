@@ -14,7 +14,6 @@ import (
 	"go.viam.com/rdk/logging"
 	"go.viam.com/rdk/robot"
 	robotimpl "go.viam.com/rdk/robot/impl"
-	"go.viam.com/rdk/utils"
 	"go.viam.com/test"
 )
 
@@ -98,7 +97,7 @@ func TestCameraServer(t *testing.T) {
 				case <-timeout:
 					t.Fatal("timed out waiting for Get image method (one image)")
 				case <-tick:
-					img, err := camera.DecodeImageFromCamera(timeoutCtx, utils.MimeTypeJPEG, nil, cam)
+					img, err := camera.DecodeImageFromCamera(timeoutCtx, cam, nil, nil)
 					if err != nil {
 						continue
 					}
@@ -116,7 +115,7 @@ func TestCameraServer(t *testing.T) {
 				case <-timeout:
 					t.Fatal("timed out waiting for Get images method (multiple images)")
 				case <-tick:
-					images, metadata, err := cam.Images(timeoutCtx)
+					images, metadata, err := cam.Images(timeoutCtx, nil, nil)
 					if err != nil {
 						continue
 					}
