@@ -46,20 +46,23 @@ device_params get_device_params(device_type device) {
             return device_params{.input_source = JETSON_INPUT_SOURCE,
                                  .input_format = JETSON_INPUT_FORMAT,
                                  .video_converter = JETSON_VIDEO_CONVERTER,
-                                 .output_encoder = JETSON_OUTPUT_ENCODER};
+                                 .output_encoder = JETSON_OUTPUT_ENCODER,
+                                 .modes_hint = "supported modes are listed under 'GST_ARGUS: Available Sensor modes' in the module logs"};
         case device_type::pi:
             return device_params{.input_source = PI_INPUT_SOURCE,
                                  .input_format = PI_INPUT_FORMAT,
                                  .video_converter = PI_VIDEO_CONVERTER,
-                                 .output_encoder = PI_OUTPUT_ENCODER};
+                                 .output_encoder = PI_OUTPUT_ENCODER,
+                                 .modes_hint = "list supported modes with 'rpicam-hello --list-cameras'"};
         case device_type::test:
             // Return empty params for test mode - pipeline will be overridden
-            return device_params{.input_source = "", .input_format = "", .video_converter = "", .output_encoder = ""};
+            return device_params{.input_source = "", .input_format = "", .video_converter = "", .output_encoder = "", .modes_hint = ""};
         default:
             return device_params{.input_source = DEFAULT_INPUT_SOURCE,
                                  .input_format = DEFAULT_INPUT_FORMAT,
                                  .video_converter = DEFAULT_VIDEO_CONVERTER,
-                                 .output_encoder = DEFAULT_OUTPUT_ENCODER};
+                                 .output_encoder = DEFAULT_OUTPUT_ENCODER,
+                                 .modes_hint = ""};
     }
 }
 
