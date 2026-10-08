@@ -43,6 +43,14 @@ class CSICamera : public viam::sdk::Camera {
     std::shared_ptr<const std::vector<unsigned char>> latest_frame;
     std::chrono::system_clock::time_point latest_frame_time;
 
+    // Pipeline failure reporting
+    void check_bus();
+    std::string drain_bus_errors();
+    [[noreturn]] void fail_pipeline(const std::string& what);
+    // Configured mode plus a device-specific pointer to the supported modes,
+    // appended to errors that are usually caused by an unsupported resolution
+    std::string mode_hint() const;
+
    public:
     // Module
     explicit CSICamera(const std::string name, const viam::sdk::ProtoStruct& attrs);

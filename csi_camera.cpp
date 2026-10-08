@@ -3,6 +3,7 @@
 #include <cstring>
 #include <fstream>
 #include <sstream>
+#include <stdexcept>
 #include <thread>
 
 #include "constraints.h"
@@ -34,21 +35,56 @@ void CSICamera::validate_attrs(const ProtoStruct& attrs) {
     set_attr<int>(attrs, "height_px", &CSICamera::height_px, DEFAULT_INPUT_HEIGHT);
     set_attr<int>(attrs, "frame_rate", &CSICamera::frame_rate, DEFAULT_INPUT_FRAMERATE);
     set_attr<std::string>(attrs, "video_path", &CSICamera::video_path, DEFAULT_INPUT_SENSOR);
+
+    auto require_positive = [](const std::string& name, int value) {
+        if (value <= 0) {
+            throw Exception("attribute \"" + name + "\" must be a positive integer, got " + std::to_string(value));
+        }
+    };
+    require_positive("width_px", width_px);
+    require_positive("height_px", height_px);
+    require_positive("frame_rate", frame_rate);
 }
+
+namespace {
+
+template <typename T>
+struct get_as_type {
+    using type = T;
+};
+
+template <>
+struct get_as_type<int> {
+    using type = double;
+};
+
+struct gst_object_deleter {
+    void operator()(gpointer p) const {
+        gst_object_unref(p);
+    }
+};
+
+struct gst_message_deleter {
+    void operator()(GstMessage* msg) const {
+        gst_message_unref(msg);
+    }
+};
+
+using gst_bus_ptr = std::unique_ptr<GstBus, gst_object_deleter>;
+using gst_message_ptr = std::unique_ptr<GstMessage, gst_message_deleter>;
+
+}  // namespace
 
 template <typename T>
 void CSICamera::set_attr(const ProtoStruct& attrs, const std::string& name, T CSICamera::* member, T de) {
-    if (attrs.count(name) == 1) {
-        const ProtoValue& val = attrs.at(name);
-        if constexpr (std::is_same<T, int>::value) {
-            this->*member = static_cast<int>(val.get_unchecked<double>());
-        } else if constexpr (std::is_same<T, std::string>::value) {
-            this->*member = val.get_unchecked<std::string>();
-        } else if constexpr (std::is_same<T, bool>::value) {
-            this->*member = val.get_unchecked<bool>();
-        }
+    if (attrs.count(name) != 1) {
+        this->*member = de;
+        return;
+    }
+    if (const auto* val = attrs.at(name).get<typename get_as_type<T>::type>()) {
+        this->*member = static_cast<T>(*val);
     } else {
-        this->*member = de;  // Set the default value if the attribute is not found
+        throw Exception("unexpected value type for attribute " + name);
     }
 }
 
@@ -112,8 +148,7 @@ void CSICamera::init_csi(const std::string pipeline_args) {
     // Fetch the appsink element
     appsink = gst_bin_get_by_name(GST_BIN(pipeline), "appsink0");
     if (!appsink) {
-        gst_object_unref(pipeline);
-        throw Exception("Failed to get the appsink element");
+        fail_pipeline("Failed to get the appsink element");
     }
 
     // Store every frame in the latest-frame cache as it arrives, so that
@@ -123,24 +158,69 @@ void CSICamera::init_csi(const std::string pipeline_args) {
 
     // Start the pipeline
     if (gst_element_set_state(pipeline, GST_STATE_PLAYING) == GST_STATE_CHANGE_FAILURE) {
-        gst_object_unref(appsink);
-        gst_object_unref(pipeline);
-        throw Exception("Failed to start the pipeline");
+        fail_pipeline("Failed to start the pipeline");
     }
 
     // Handle async pipeline creation
-    wait_pipeline();
+    try {
+        wait_pipeline();
+    } catch (const std::exception& e) {
+        fail_pipeline(e.what());
+    }
 
-    // Run the main loop
     bus = gst_element_get_bus(pipeline);
     if (!bus) {
-        gst_object_unref(appsink);
-        gst_object_unref(pipeline);
-        throw Exception("Failed to get the bus for the pipeline");
+        fail_pipeline("Failed to get the bus for the pipeline");
     }
 }
 
-// Handles async GST state change
+std::string CSICamera::mode_hint() const {
+    std::string hint = "configured mode " + std::to_string(width_px) + "x" + std::to_string(height_px) + "@" + std::to_string(frame_rate) +
+                       "fps on " + device.name;
+    const auto modes_hint = get_device_params(device).modes_hint;
+    if (!modes_hint.empty()) {
+        hint += "; " + modes_hint;
+    }
+    return hint;
+}
+
+std::string CSICamera::drain_bus_errors() {
+    std::string errors;
+    if (pipeline == nullptr) {
+        return errors;
+    }
+    gst_bus_ptr pipeline_bus(gst_element_get_bus(pipeline));
+    if (pipeline_bus == nullptr) {
+        return errors;
+    }
+    while (gst_message_ptr msg{gst_bus_pop_filtered(pipeline_bus.get(), GST_MESSAGE_ERROR)}) {
+        GError* error = nullptr;
+        gchar* debug_info = nullptr;
+        gst_message_parse_error(msg.get(), &error, &debug_info);
+        VIAM_RESOURCE_LOG(debug) << "Debug Info: " << (debug_info ? debug_info : "");
+        if (!errors.empty()) {
+            errors += "; ";
+        }
+        errors += std::string(GST_MESSAGE_SRC_NAME(msg.get())) + ": " + error->message;
+        g_error_free(error);
+        g_free(debug_info);
+    }
+    return errors;
+}
+
+void CSICamera::fail_pipeline(const std::string& what) {
+    std::string msg = what;
+    const auto errors = drain_bus_errors();
+    if (!errors.empty()) {
+        msg += ": " + errors;
+    }
+    msg += " (" + mode_hint() + ")";
+    stop_pipeline();
+    throw Exception(msg);
+}
+
+// Handles async GST state change. Throws std exception since it will be caught
+// and rethrown as sdk::Exception
 void CSICamera::wait_pipeline() {
     GstState state, pending;
     GstStateChangeReturn ret;
@@ -155,7 +235,7 @@ void CSICamera::wait_pipeline() {
         auto elapsed_time = std::chrono::duration_cast<std::chrono::microseconds>(current_time - start_time).count();
 
         if (elapsed_time >= timeout_microseconds) {
-            throw Exception("Timeout: GST pipeline state change did not complete within timeout limit");
+            throw std::runtime_error("Timeout: GST pipeline state change did not complete within timeout limit");
         }
 
         // Wait for a short duration to avoid busy waiting
@@ -166,12 +246,12 @@ void CSICamera::wait_pipeline() {
         VIAM_RESOURCE_LOG(debug) << "GST pipeline state change success";
     } else if (ret == GST_STATE_CHANGE_FAILURE) {
         VIAM_RESOURCE_LOG(error) << "GST pipeline failed to change state";
-        throw Exception("GST pipeline failed to change state");
+        throw std::runtime_error("GST pipeline failed to change state");
     } else if (ret == GST_STATE_CHANGE_NO_PREROLL) {
         VIAM_RESOURCE_LOG(warn) << "GST pipeline changed but not enough data for preroll";
     } else {
         VIAM_RESOURCE_LOG(error) << "GST pipeline failed to change state";
-        throw Exception("GST pipeline failed to change state");
+        throw std::runtime_error("GST pipeline failed to change state");
     }
 }
 
@@ -210,6 +290,14 @@ void CSICamera::stop_pipeline() {
     bus = nullptr;
 }
 
+// Handles every message queued on the bus; errors come after any warnings
+// the source posted first, so one pop per call would delay reporting them
+void CSICamera::check_bus() {
+    while (gst_message_ptr msg{gst_bus_pop(bus)}) {
+        catch_pipeline(msg.get());
+    }
+}
+
 void CSICamera::catch_pipeline(GstMessage* msg) {
     if (msg == nullptr) {
         VIAM_RESOURCE_LOG(debug) << "catch_pipeline called with null message";
@@ -223,11 +311,11 @@ void CSICamera::catch_pipeline(GstMessage* msg) {
         case GST_MESSAGE_ERROR: {
             gst_message_parse_error(msg, &error, &debugInfo);
             VIAM_RESOURCE_LOG(debug) << "Debug Info: " << debugInfo;
-            std::string err_msg = error->message;
+            std::string err_msg = std::string(GST_MESSAGE_SRC_NAME(msg)) + ": " + error->message;
             g_error_free(error);
             g_free(debugInfo);
             stop_pipeline();
-            throw Exception("GST pipeline error: " + err_msg);
+            throw Exception("GST pipeline error from " + err_msg + " (" + mode_hint() + ")");
         }
         case GST_MESSAGE_EOS:
             VIAM_RESOURCE_LOG(debug) << "End of stream received, stopping pipeline";
@@ -301,17 +389,7 @@ CSICamera::cached_frame CSICamera::get_latest_frame() {
         throw Exception("GST pipeline is not running");
     }
 
-    // Check bus for messages
-    GstMessage* msg = gst_bus_pop(bus);
-    if (msg != nullptr) {
-        try {
-            catch_pipeline(msg);
-        } catch (...) {
-            gst_message_unref(msg);
-            throw;
-        }
-        gst_message_unref(msg);
-    }
+    check_bus();
 
     const auto max_age = max_frame_age();
     std::unique_lock<std::mutex> lock(frame_mutex);
@@ -320,7 +398,12 @@ CSICamera::cached_frame CSICamera::get_latest_frame() {
         // extra time to deliver its first frame
         const auto first_frame_timeout = std::max(max_age, std::chrono::milliseconds(GST_CHANGE_STATE_TIMEOUT * 1000));
         if (!frame_cv.wait_for(lock, first_frame_timeout, [this] { return latest_frame != nullptr; })) {
-            throw Exception("timed out waiting for first frame from GST pipeline");
+            // A source that rejected the configured mode (e.g. nvarguscamerasrc) reports it on the bus
+            // during the wait, so prefer that error. Unlock first: check_bus may stop the pipeline,
+            // which joins the streaming thread that takes frame_mutex.
+            lock.unlock();
+            check_bus();
+            throw Exception("timed out waiting for first frame from GST pipeline (" + mode_hint() + ")");
         }
     }
 

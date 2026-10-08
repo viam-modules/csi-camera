@@ -26,6 +26,8 @@ struct device_params {
     std::string input_format;
     std::string video_converter;
     std::string output_encoder;
+    // How a user can list the sensor modes this device supports
+    std::string modes_hint;
 };
 
 device_type get_device_type();

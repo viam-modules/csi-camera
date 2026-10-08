@@ -58,6 +58,58 @@ TEST(CSICamera, CreateCustom) {
     camera.stop_pipeline();
 }
 
+// Test that non-positive dimensions are rejected before any pipeline is built
+TEST(CSICamera, RejectsNonPositiveResolution) {
+    ensure_runtime();
+
+    for (const auto& name : {"width_px", "height_px", "frame_rate"}) {
+        ProtoStruct attrs;
+        attrs.insert(std::make_pair(name, ProtoValue(0)));
+        try {
+            CSICamera camera("test", attrs);
+            FAIL() << name << "=0 did not throw";
+        } catch (const Exception& e) {
+            EXPECT_NE(std::string(e.what()).find(name), std::string::npos) << e.what();
+        }
+    }
+}
+
+// Test that a wrongly typed attribute names the attribute in the error
+TEST(CSICamera, RejectsWrongAttrType) {
+    ensure_runtime();
+
+    ProtoStruct attrs;
+    attrs.insert(std::make_pair("width_px", ProtoValue(std::string("1920"))));
+    try {
+        CSICamera camera("test", attrs);
+        FAIL() << "string width_px did not throw";
+    } catch (const Exception& e) {
+        EXPECT_NE(std::string(e.what()).find("unexpected value type for attribute width_px"), std::string::npos) << e.what();
+    }
+}
+
+// Test that a pipeline that fails to negotiate reports the GStreamer error,
+// the failing element and the configured mode, and leaves no pipeline behind
+TEST(CSICamera, InitFailureReportsBusError) {
+    ensure_runtime();
+
+    ProtoStruct attrs;
+    CSICamera camera("test", attrs);
+    camera.stop_pipeline();
+
+    try {
+        camera.init_csi("videotestsrc ! video/x-raw,format=NV12 ! video/x-raw,format=RGB ! appsink name=appsink0");
+        FAIL() << "unnegotiable pipeline did not throw";
+    } catch (const Exception& e) {
+        const std::string what = e.what();
+        EXPECT_NE(what.find("videotestsrc"), std::string::npos) << what;
+        EXPECT_NE(what.find("Internal data stream error"), std::string::npos) << what;
+        EXPECT_NE(what.find("configured mode 1920x1080@30fps"), std::string::npos) << what;
+    }
+    EXPECT_EQ(camera.get_pipeline(), nullptr);
+    EXPECT_EQ(camera.get_appsink(), nullptr);
+}
+
 // Test that many concurrent consumers can each get frames: consumers read a
 // shared latest-frame cache, so one client's request does not consume the
 // frame another client is waiting on
