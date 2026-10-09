@@ -127,6 +127,7 @@ The following attributes are available for `viam:camera:csi` cameras:
 | `width_px` | int | Optional | Width of the image this camera captures in pixels. <br> Default: `1920` |
 | `height_px` | int | Optional | Height of the image this camera captures in pixels. <br> Default: `1080` |
 | `frame_rate` | int | Optional | The image capture frame rate this camera should use. <br> Default: `30` |
+| `encode_on_request` | bool | Optional | Encode a JPEG only when an image is requested, from the newest frame, instead of encoding every frame. Requests for the same frame share one encode. <br> Default: `false` |
 
 Once configured, check the [Logs tab](https://docs.viam.com/program/debug/) of your robot in the Viam app to make sure your camera has connected and no errors are being raised.
 
