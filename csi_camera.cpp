@@ -184,26 +184,25 @@ void CSICamera::init_csi(const std::string pipeline_args) {
 // into system memory (about 2.4 ms for a 1080p frame) and encoding from cached
 // memory cut the module from 44% to 12% of a CM5 core at 1080p and 10 fps.
 void CSICamera::copy_encoder_input() {
-    GstElement* encoder = gst_bin_get_by_name(GST_BIN(pipeline), ENCODER_NAME);
-    if (encoder == nullptr) {
+    gst_element_ptr encoder{gst_bin_get_by_name(GST_BIN(pipeline), ENCODER_NAME)};
+    if (!encoder) {
         VIAM_RESOURCE_LOG(debug) << "No element named " << ENCODER_NAME << "; encoding straight from the source buffers";
         return;
     }
-    GstPad* pad = gst_element_get_static_pad(encoder, "sink");
-    gst_object_unref(encoder);
-    if (pad == nullptr) {
+    gst_pad_ptr pad{gst_element_get_static_pad(encoder.get(), "sink")};
+    if (!pad) {
         fail_pipeline("Failed to get the encoder sink pad");
     }
-    gst_pad_add_probe(pad, GST_PAD_PROBE_TYPE_BUFFER, &CSICamera::on_encoder_input, nullptr, nullptr);
-    gst_object_unref(pad);
+    gst_pad_add_probe(pad.get(), GST_PAD_PROBE_TYPE_BUFFER, &CSICamera::on_encoder_input, nullptr, nullptr);
 }
 
 GstPadProbeReturn CSICamera::on_encoder_input(GstPad* /* pad */, GstPadProbeInfo* info, gpointer /* user_data */) {
-    GstBuffer* buffer = GST_PAD_PROBE_INFO_BUFFER(info);
-    GstBuffer* copy = gst_buffer_copy_deep(buffer);
-    if (copy != nullptr) {
-        gst_buffer_unref(buffer);
-        GST_PAD_PROBE_INFO_DATA(info) = copy;
+    gst_buffer_ptr copy{gst_buffer_copy_deep(GST_PAD_PROBE_INFO_BUFFER(info))};
+    if (copy) {
+        // The probe owns the original's reference; it is released here and
+        // the copy travels on in its place
+        gst_buffer_ptr original{GST_PAD_PROBE_INFO_BUFFER(info)};
+        GST_PAD_PROBE_INFO_DATA(info) = copy.release();
     }
     return GST_PAD_PROBE_OK;
 }
