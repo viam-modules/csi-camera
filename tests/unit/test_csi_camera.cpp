@@ -4,6 +4,7 @@
 #include <thread>
 #include <viam/sdk/common/instance.hpp>
 #include <viam/sdk/common/proto_convert.hpp>
+#include <viam/sdk/common/utils.hpp>
 #include <viam/sdk/components/camera.hpp>
 
 #include "../../constraints.h"
@@ -164,8 +165,7 @@ TEST(CSICamera, CapturedAtIsRecent) {
 TEST(CSICamera, PiEncodesCopiedFrames) {
     ensure_runtime();
 
-    const char* prev = std::getenv("VIAM_CSI_DEVICE");
-    const std::string prev_device = prev ? prev : "";
+    const auto prev_device = viam::sdk::get_env("VIAM_CSI_DEVICE");
     setenv("VIAM_CSI_DEVICE", "pi", 1);
 
     ProtoStruct attrs = std::unordered_map<std::string, ProtoValue>();
@@ -180,8 +180,8 @@ TEST(CSICamera, PiEncodesCopiedFrames) {
     }
     camera.stop_pipeline();
 
-    if (prev) {
-        setenv("VIAM_CSI_DEVICE", prev_device.c_str(), 1);
+    if (prev_device) {
+        setenv("VIAM_CSI_DEVICE", prev_device->c_str(), 1);
     } else {
         unsetenv("VIAM_CSI_DEVICE");
     }
