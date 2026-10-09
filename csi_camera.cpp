@@ -1,15 +1,166 @@
 #include <algorithm>
+#include <atomic>
 #include <chrono>
 #include <cstring>
 #include <fstream>
+#include <functional>
 #include <sstream>
 #include <stdexcept>
 #include <thread>
+#include <utility>
+
+#include <gst/app/gstappsrc.h>
 
 #include "constraints.h"
 #include "csi_camera.h"
 
 using namespace viam::sdk;
+
+// Encodes raw frames on request (encode_on_request). Owns a second
+// appsrc ! encoder ! appsink pipeline, driven one frame at a time under its
+// lock, and the last encoded frame, so concurrent requests for the same frame
+// share one encode.
+class CSICamera::frame_encoder {
+   public:
+    // log receives the periodic request and encode counts
+    frame_encoder(const std::string& encoder_element, std::function<void(const std::string&)> log);
+    frame_encoder(const frame_encoder&) = delete;
+    frame_encoder& operator=(const frame_encoder&) = delete;
+
+    // Encodes the raw frame in sample, unless it or a newer frame is already
+    // encoded
+    cached_frame encode(gst_sample_ptr sample, uint64_t seq, std::chrono::system_clock::time_point captured_at);
+    // Stops the encode pipeline once any encode in progress finishes; later
+    // encodes throw
+    void stop();
+    uint64_t encode_count() const;
+
+   private:
+    void count_request(bool encoded);
+
+    // Guards everything below it except encodes
+    std::mutex mutex;
+    gst_pipeline_ptr pipeline;
+    gst_element_ptr src;
+    gst_element_ptr sink;
+    std::shared_ptr<const std::vector<unsigned char>> encoded_frame;
+    uint64_t encoded_seq = 0;
+    std::chrono::system_clock::time_point encoded_time;
+    // Requests and encodes since stats_start
+    int stats_requests = 0;
+    int stats_encodes = 0;
+    std::chrono::steady_clock::time_point stats_start;
+    std::function<void(const std::string&)> log;
+
+    std::atomic<uint64_t> encodes{0};
+};
+
+CSICamera::frame_encoder::frame_encoder(const std::string& encoder_element, std::function<void(const std::string&)> log)
+    : stats_start(std::chrono::steady_clock::now()), log(std::move(log)) {
+    const std::string args = std::string("appsrc name=") + ENCODE_SRC_NAME + " format=time ! " + encoder_element + " name=" + ENCODER_NAME +
+                             " ! appsink name=" + ENCODE_SINK_NAME + " sync=false";
+    GError* error = nullptr;
+    pipeline.reset(gst_parse_launch(args.c_str(), &error));
+    if (!pipeline) {
+        const std::string what = error ? error->message : "unknown error";
+        if (error) {
+            g_error_free(error);
+        }
+        throw Exception("Failed to create the encode pipeline: " + what);
+    }
+    src.reset(gst_bin_get_by_name(GST_BIN(pipeline.get()), ENCODE_SRC_NAME));
+    sink.reset(gst_bin_get_by_name(GST_BIN(pipeline.get()), ENCODE_SINK_NAME));
+    if (!src || !sink) {
+        throw Exception("Failed to get the encode pipeline's appsrc or appsink");
+    }
+    // Prerolls on the first frame pushed
+    if (gst_element_set_state(pipeline.get(), GST_STATE_PLAYING) == GST_STATE_CHANGE_FAILURE) {
+        throw Exception("Failed to start the encode pipeline");
+    }
+}
+
+CSICamera::cached_frame CSICamera::frame_encoder::encode(gst_sample_ptr sample,
+                                                         uint64_t seq,
+                                                         std::chrono::system_clock::time_point captured_at) {
+    std::lock_guard<std::mutex> lock(mutex);
+    if (encoded_frame != nullptr && encoded_seq >= seq) {
+        count_request(false);
+        return cached_frame{encoded_frame, encoded_time};
+    }
+    if (!pipeline) {
+        throw Exception("encode pipeline is not running");
+    }
+
+    // libcamerasrc's dmabufs are mapped uncached, so the encoder reads a copy
+    // in system memory (see copy_encoder_input)
+    gst_buffer_ptr copy{gst_buffer_copy_deep(gst_sample_get_buffer(sample.get()))};
+    if (!copy) {
+        throw Exception("failed to copy the raw frame");
+    }
+    GST_BUFFER_PTS(copy.get()) = GST_CLOCK_TIME_NONE;
+    GST_BUFFER_DTS(copy.get()) = GST_CLOCK_TIME_NONE;
+
+    GstCaps* caps = gst_sample_get_caps(sample.get());
+    gst_caps_ptr src_caps{gst_app_src_get_caps(GST_APP_SRC(src.get()))};
+    if (!src_caps || !gst_caps_is_equal(src_caps.get(), caps)) {
+        gst_app_src_set_caps(GST_APP_SRC(src.get()), caps);
+    }
+
+    // An encode that timed out may have finished since; drop it so the pull
+    // below returns this frame
+    while (gst_sample_ptr late{gst_app_sink_try_pull_sample(GST_APP_SINK(sink.get()), 0)}) {
+        // released at the end of each iteration
+    }
+
+    // push_buffer takes the copy
+    if (gst_app_src_push_buffer(GST_APP_SRC(src.get()), copy.release()) != GST_FLOW_OK) {
+        throw Exception("failed to push the raw frame to the encoder");
+    }
+    gst_sample_ptr encoded{gst_app_sink_try_pull_sample(GST_APP_SINK(sink.get()), ENCODE_TIMEOUT_MS * GST_MSECOND)};
+    if (!encoded) {
+        throw Exception("timed out encoding the frame");
+    }
+    GstBuffer* buffer = gst_sample_get_buffer(encoded.get());
+    if (buffer == nullptr) {
+        throw Exception("encoder produced no buffer");
+    }
+    encoded_frame = std::make_shared<const std::vector<unsigned char>>(buff_to_vec(buffer));
+    encoded_seq = seq;
+    encoded_time = captured_at;
+    encodes++;
+    count_request(true);
+    return cached_frame{encoded_frame, encoded_time};
+}
+
+void CSICamera::frame_encoder::stop() {
+    std::lock_guard<std::mutex> lock(mutex);
+    sink.reset();
+    src.reset();
+    pipeline.reset();
+    encoded_frame = nullptr;
+    encoded_seq = 0;
+}
+
+uint64_t CSICamera::frame_encoder::encode_count() const {
+    return encodes.load();
+}
+
+// Logs how many requests needed an encode, once per ENCODE_STATS_INTERVAL_S;
+// the caller holds mutex
+void CSICamera::frame_encoder::count_request(bool encoded) {
+    stats_requests++;
+    if (encoded) {
+        stats_encodes++;
+    }
+    const auto now = std::chrono::steady_clock::now();
+    if (now - stats_start >= std::chrono::seconds(ENCODE_STATS_INTERVAL_S)) {
+        log(std::to_string(stats_requests) + " requests, " + std::to_string(stats_encodes) + " encodes in the last " +
+            std::to_string(std::chrono::duration_cast<std::chrono::seconds>(now - stats_start).count()) + "s");
+        stats_requests = 0;
+        stats_encodes = 0;
+        stats_start = now;
+    }
+}
 
 CSICamera::CSICamera(const std::string name, const ProtoStruct& attrs) : Camera(std::move(name)) {
     device = get_device_type();
@@ -63,22 +214,6 @@ template <>
 struct get_as_type<int> {
     using type = double;
 };
-
-template <typename T, auto unref_fn>
-struct gst_deleter {
-    void operator()(T* p) const {
-        unref_fn(p);
-    }
-};
-
-template <typename T, auto unref_fn>
-using gst_ptr = std::unique_ptr<T, gst_deleter<T, unref_fn>>;
-
-using gst_buffer_ptr = gst_ptr<GstBuffer, gst_buffer_unref>;
-using gst_bus_ptr = gst_ptr<GstBus, gst_object_unref>;
-using gst_element_ptr = gst_ptr<GstElement, gst_object_unref>;
-using gst_message_ptr = gst_ptr<GstMessage, gst_message_unref>;
-using gst_pad_ptr = gst_ptr<GstPad, gst_object_unref>;
 
 }  // namespace
 
@@ -159,7 +294,12 @@ void CSICamera::init_csi(const std::string pipeline_args) {
     }
 
     if (raw_frames) {
-        init_encoder();
+        try {
+            encoder = std::make_unique<frame_encoder>(get_device_params(device).output_encoder,
+                                                      [this](const std::string& line) { VIAM_RESOURCE_LOG(debug) << line; });
+        } catch (const std::exception& e) {
+            fail_pipeline(e.what());
+        }
     } else if (device.value == device_type::pi) {
         copy_encoder_input();
     }
@@ -213,53 +353,6 @@ GstPadProbeReturn CSICamera::on_encoder_input(GstPad* /* pad */, GstPadProbeInfo
         GST_PAD_PROBE_INFO_DATA(info) = copy.release();
     }
     return GST_PAD_PROBE_OK;
-}
-
-// With encode_on_request the camera pipeline stops at raw frames, and this
-// second pipeline encodes one frame per call to encode_frame
-void CSICamera::init_encoder() {
-    const std::string encode_args = std::string("appsrc name=") + ENCODE_SRC_NAME + " format=time ! " +
-                                    get_device_params(device).output_encoder + " name=" + ENCODER_NAME +
-                                    " ! appsink name=" + ENCODE_SINK_NAME + " sync=false";
-    VIAM_RESOURCE_LOG(debug) << "encode pipeline_args: " << encode_args;
-    GError* error = nullptr;
-    encode_pipeline = gst_parse_launch(encode_args.c_str(), &error);
-    if (encode_pipeline == nullptr) {
-        const std::string what = error ? error->message : "unknown error";
-        if (error) {
-            g_error_free(error);
-        }
-        fail_pipeline("Failed to create the encode pipeline: " + what);
-    }
-    encode_src = gst_bin_get_by_name(GST_BIN(encode_pipeline), ENCODE_SRC_NAME);
-    encode_sink = gst_bin_get_by_name(GST_BIN(encode_pipeline), ENCODE_SINK_NAME);
-    if (encode_src == nullptr || encode_sink == nullptr) {
-        fail_pipeline("Failed to get the encode pipeline's appsrc or appsink");
-    }
-    // Prerolls on the first frame pushed
-    if (gst_element_set_state(encode_pipeline, GST_STATE_PLAYING) == GST_STATE_CHANGE_FAILURE) {
-        fail_pipeline("Failed to start the encode pipeline");
-    }
-    stats_start = std::chrono::steady_clock::now();
-}
-
-void CSICamera::stop_encoder() {
-    // Waits for an encode in progress
-    std::lock_guard<std::mutex> lock(encode_mutex);
-    if (encode_pipeline != nullptr) {
-        gst_element_set_state(encode_pipeline, GST_STATE_NULL);
-    }
-    if (encode_src)
-        gst_object_unref(encode_src);
-    if (encode_sink)
-        gst_object_unref(encode_sink);
-    if (encode_pipeline)
-        gst_object_unref(encode_pipeline);
-    encode_src = nullptr;
-    encode_sink = nullptr;
-    encode_pipeline = nullptr;
-    encoded_frame = nullptr;
-    encoded_seq = 0;
 }
 
 std::string CSICamera::mode_hint() const {
@@ -377,12 +470,11 @@ void CSICamera::stop_pipeline() {
     pipeline = nullptr;
     bus = nullptr;
 
-    stop_encoder();
-    std::lock_guard<std::mutex> lock(frame_mutex);
-    if (latest_sample) {
-        gst_sample_unref(latest_sample);
-        latest_sample = nullptr;
+    if (encoder) {
+        encoder->stop();
     }
+    std::lock_guard<std::mutex> lock(frame_mutex);
+    latest_sample.reset();
 }
 
 // Handles every message queued on the bus; errors come after any warnings
@@ -444,31 +536,27 @@ GstFlowReturn CSICamera::on_new_sample(GstAppSink* /* sink */, gpointer user_dat
 }
 
 GstFlowReturn CSICamera::handle_new_sample() {
-    GstSample* sample = gst_app_sink_pull_sample(GST_APP_SINK(appsink));
-    if (sample == nullptr) {
+    gst_sample_ptr sample{gst_app_sink_pull_sample(GST_APP_SINK(appsink))};
+    if (!sample) {
         // appsink is flushing or reached EOS
         return GST_FLOW_OK;
     }
 
     if (raw_frames) {
         // Keep only a reference to the newest raw frame; get_images encodes it
-        // if someone asks for it
-        GstSample* previous = nullptr;
+        // if someone asks for it. The previous frame is released outside the lock.
+        gst_sample_ptr previous;
         {
             std::lock_guard<std::mutex> lock(frame_mutex);
-            previous = latest_sample;
-            latest_sample = sample;
+            previous = std::exchange(latest_sample, std::move(sample));
             latest_frame_seq++;
             latest_frame_time = std::chrono::system_clock::now();
         }
         frame_cv.notify_all();
-        if (previous) {
-            gst_sample_unref(previous);
-        }
         return GST_FLOW_OK;
     }
 
-    GstBuffer* buffer = gst_sample_get_buffer(sample);
+    GstBuffer* buffer = gst_sample_get_buffer(sample.get());
     if (buffer != nullptr) {
         // Must not throw across the GStreamer C callback boundary
         try {
@@ -486,7 +574,6 @@ GstFlowReturn CSICamera::handle_new_sample() {
         VIAM_RESOURCE_LOG(warn) << "Failed to get buffer from sample";
     }
 
-    gst_sample_unref(sample);
     return GST_FLOW_OK;
 }
 
@@ -510,11 +597,11 @@ CSICamera::cached_frame CSICamera::get_latest_frame() {
         return cached_frame{latest_frame, latest_frame_time};
     }
 
-    GstSample* sample = gst_sample_ref(latest_sample);
+    gst_sample_ptr sample{gst_sample_ref(latest_sample.get())};
     const auto seq = latest_frame_seq;
     const auto captured_at = latest_frame_time;
     lock.unlock();
-    return encode_frame(sample, seq, captured_at);
+    return encoder->encode(std::move(sample), seq, captured_at);
 }
 
 // Waits for the pipeline's first frame and checks that the newest frame is
@@ -539,82 +626,6 @@ void CSICamera::wait_for_frame(std::unique_lock<std::mutex>& lock) {
     const auto age = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now() - latest_frame_time);
     if (age > max_age) {
         throw Exception("latest frame is stale (" + std::to_string(age.count()) + "ms old): GST pipeline may have stalled");
-    }
-}
-
-// Encodes the raw frame in sample, unless it or a newer frame is already
-// encoded. Takes ownership of the sample reference.
-CSICamera::cached_frame CSICamera::encode_frame(GstSample* sample, uint64_t seq, std::chrono::system_clock::time_point captured_at) {
-    std::unique_ptr<GstSample, decltype(&gst_sample_unref)> owned(sample, &gst_sample_unref);
-    std::lock_guard<std::mutex> lock(encode_mutex);
-    if (encoded_frame != nullptr && encoded_seq >= seq) {
-        count_request(false);
-        return cached_frame{encoded_frame, encoded_time};
-    }
-    if (encode_pipeline == nullptr) {
-        throw Exception("encode pipeline is not running");
-    }
-
-    // libcamerasrc's dmabufs are mapped uncached, so the encoder reads a copy
-    // in system memory (see copy_encoder_input)
-    GstBuffer* copy = gst_buffer_copy_deep(gst_sample_get_buffer(sample));
-    if (copy == nullptr) {
-        throw Exception("failed to copy the raw frame");
-    }
-    GST_BUFFER_PTS(copy) = GST_CLOCK_TIME_NONE;
-    GST_BUFFER_DTS(copy) = GST_CLOCK_TIME_NONE;
-
-    GstCaps* caps = gst_sample_get_caps(sample);
-    GstCaps* src_caps = gst_app_src_get_caps(GST_APP_SRC(encode_src));
-    if (src_caps == nullptr || !gst_caps_is_equal(src_caps, caps)) {
-        gst_app_src_set_caps(GST_APP_SRC(encode_src), caps);
-    }
-    if (src_caps) {
-        gst_caps_unref(src_caps);
-    }
-
-    // An encode that timed out may have finished since; drop it so the pull
-    // below returns this frame
-    while (GstSample* late = gst_app_sink_try_pull_sample(GST_APP_SINK(encode_sink), 0)) {
-        gst_sample_unref(late);
-    }
-
-    // push_buffer takes the copy
-    if (gst_app_src_push_buffer(GST_APP_SRC(encode_src), copy) != GST_FLOW_OK) {
-        throw Exception("failed to push the raw frame to the encoder");
-    }
-    GstSample* encoded = gst_app_sink_try_pull_sample(GST_APP_SINK(encode_sink), ENCODE_TIMEOUT_MS * GST_MSECOND);
-    if (encoded == nullptr) {
-        throw Exception("timed out encoding the frame");
-    }
-    std::unique_ptr<GstSample, decltype(&gst_sample_unref)> owned_encoded(encoded, &gst_sample_unref);
-    GstBuffer* buffer = gst_sample_get_buffer(encoded);
-    if (buffer == nullptr) {
-        throw Exception("encoder produced no buffer");
-    }
-
-    encoded_frame = std::make_shared<const std::vector<unsigned char>>(buff_to_vec(buffer));
-    encoded_seq = seq;
-    encoded_time = captured_at;
-    encode_count++;
-    count_request(true);
-    return cached_frame{encoded_frame, encoded_time};
-}
-
-// Logs how many requests needed an encode, once per ENCODE_STATS_INTERVAL_S;
-// the caller holds encode_mutex
-void CSICamera::count_request(bool encoded) {
-    stats_requests++;
-    if (encoded) {
-        stats_encodes++;
-    }
-    const auto now = std::chrono::steady_clock::now();
-    if (now - stats_start >= std::chrono::seconds(ENCODE_STATS_INTERVAL_S)) {
-        VIAM_RESOURCE_LOG(debug) << stats_requests << " requests, " << stats_encodes << " encodes in the last "
-                                 << std::chrono::duration_cast<std::chrono::seconds>(now - stats_start).count() << "s";
-        stats_requests = 0;
-        stats_encodes = 0;
-        stats_start = now;
     }
 }
 
@@ -685,7 +696,7 @@ bool CSICamera::get_encode_on_request() const {
 }
 
 uint64_t CSICamera::get_encode_count() const {
-    return encode_count.load();
+    return encoder ? encoder->encode_count() : 0;
 }
 
 GstElement* CSICamera::get_appsink() const {

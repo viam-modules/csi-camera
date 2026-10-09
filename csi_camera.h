@@ -1,6 +1,5 @@
 #pragma once
 
-#include <atomic>
 #include <chrono>
 #include <condition_variable>
 #include <cstdint>
@@ -11,7 +10,6 @@
 #include <vector>
 
 #include <gst/app/gstappsink.h>
-#include <gst/app/gstappsrc.h>
 #include <gst/gst.h>
 
 #include <viam/sdk/common/exception.hpp>
@@ -21,6 +19,42 @@
 #include <viam/sdk/log/logging.hpp>
 
 #include "utils.h"
+
+// Owning pointers for GStreamer references: gst_ptr<T, unref_fn> releases its
+// reference with unref_fn
+template <typename T, auto unref_fn>
+struct gst_deleter {
+    void operator()(T* p) const {
+        unref_fn(p);
+    }
+};
+
+template <typename T, auto unref_fn>
+using gst_ptr = std::unique_ptr<T, gst_deleter<T, unref_fn>>;
+
+// Older GStreamer (e.g. 1.16) defines the mini-object unrefs, such as
+// gst_sample_unref, as static inline functions; a class member whose type
+// names one gets different types in different translation units, so these go
+// through the exported gst_mini_object_unref
+template <typename T>
+inline void gst_mini_object_release(T* p) {
+    gst_mini_object_unref(GST_MINI_OBJECT_CAST(p));
+}
+
+using gst_buffer_ptr = gst_ptr<GstBuffer, gst_mini_object_release<GstBuffer>>;
+using gst_bus_ptr = gst_ptr<GstBus, gst_object_unref>;
+using gst_caps_ptr = gst_ptr<GstCaps, gst_mini_object_release<GstCaps>>;
+using gst_element_ptr = gst_ptr<GstElement, gst_object_unref>;
+using gst_message_ptr = gst_ptr<GstMessage, gst_mini_object_release<GstMessage>>;
+using gst_pad_ptr = gst_ptr<GstPad, gst_object_unref>;
+using gst_sample_ptr = gst_ptr<GstSample, gst_mini_object_release<GstSample>>;
+
+// Stops a pipeline before releasing it, so it never outlives its owner running
+inline void gst_pipeline_stop_and_unref(GstElement* pipeline) {
+    gst_element_set_state(pipeline, GST_STATE_NULL);
+    gst_object_unref(pipeline);
+}
+using gst_pipeline_ptr = gst_ptr<GstElement, gst_pipeline_stop_and_unref>;
 
 class CSICamera : public viam::sdk::Camera {
    private:
@@ -49,25 +83,14 @@ class CSICamera : public viam::sdk::Camera {
     std::mutex frame_mutex;
     std::condition_variable frame_cv;
     std::shared_ptr<const std::vector<unsigned char>> latest_frame;
-    GstSample* latest_sample = nullptr;
+    gst_sample_ptr latest_sample;
     uint64_t latest_frame_seq = 0;
     std::chrono::system_clock::time_point latest_frame_time;
 
-    // On-request encoding (raw_frames): appsrc ! encoder ! appsink, driven one
-    // frame at a time under encode_mutex, which also guards the encoded-frame
-    // cache so concurrent requests for the same frame share one encode
-    GstElement* encode_pipeline = nullptr;
-    GstElement* encode_src = nullptr;
-    GstElement* encode_sink = nullptr;
-    std::mutex encode_mutex;
-    std::shared_ptr<const std::vector<unsigned char>> encoded_frame;
-    uint64_t encoded_seq = 0;
-    std::chrono::system_clock::time_point encoded_time;
-    std::atomic<uint64_t> encode_count{0};
-    // Requests and encodes since stats_start, logged at debug level
-    int stats_requests = 0;
-    int stats_encodes = 0;
-    std::chrono::steady_clock::time_point stats_start;
+    // On-request encoding: owns the encode pipeline and the last encoded
+    // frame; set only with raw_frames (defined in csi_camera.cpp)
+    class frame_encoder;
+    std::unique_ptr<frame_encoder> encoder;
 
     // Pipeline failure reporting
     void check_bus();
@@ -113,13 +136,8 @@ class CSICamera : public viam::sdk::Camera {
     void wait_for_frame(std::unique_lock<std::mutex>& lock);
     std::chrono::milliseconds max_frame_age() const;
 
-    // On-request encoding (raw_frames)
-    void init_encoder();
-    void stop_encoder();
-    cached_frame encode_frame(GstSample* sample, uint64_t seq, std::chrono::system_clock::time_point captured_at);
-    void count_request(bool encoded);
     std::vector<unsigned char> get_csi_image();
-    std::vector<unsigned char> buff_to_vec(GstBuffer* buff);
+    static std::vector<unsigned char> buff_to_vec(GstBuffer* buff);
 
     // Pi only: makes the encoder read each frame from a copy in system memory
     void copy_encoder_input();
