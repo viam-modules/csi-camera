@@ -278,6 +278,111 @@ TEST(CSICamera, EncodeOnRequestIgnoredOffPi) {
     camera.stop_pipeline();
 }
 
+static ProtoStruct extra_with(const char* key) {
+    ProtoStruct extra;
+    extra.insert(std::make_pair(key, ProtoValue(true)));
+    return extra;
+}
+
+static int64_t captured_ns(const Camera::image_collection& collection) {
+    return collection.metadata.captured_at.time_since_epoch().count();
+}
+
+// Test that a last_served_frame request gets the last frame served to a fresh
+// request, even after newer frames arrive, without encoding
+TEST(CSICamera, LastServedFrameReusesServedFrame) {
+    ensure_runtime();
+    ScopedDevice pi("pi");
+
+    ProtoStruct attrs;
+    attrs.insert(std::make_pair("encode_on_request", ProtoValue(true)));
+    CSICamera camera("test", attrs);
+
+    auto fresh = camera.get_images({}, ProtoStruct{});
+    expect_jpeg(fresh);
+    EXPECT_EQ(camera.get_encode_count(), 1);
+    // The test source runs at 5 fps, so newer frames arrive meanwhile
+    std::this_thread::sleep_for(std::chrono::milliseconds(500));
+    for (int i = 0; i < 3; i++) {
+        auto served = camera.get_images({}, extra_with(LAST_SERVED_FRAME_KEY));
+        expect_jpeg(served);
+        EXPECT_EQ(served.images[0].bytes, fresh.images[0].bytes);
+        EXPECT_EQ(captured_ns(served), captured_ns(fresh));
+    }
+    EXPECT_EQ(camera.get_encode_count(), 1);
+
+    // A fresh request still gets a newer frame, which becomes the last served
+    auto newer = camera.get_images({}, ProtoStruct{});
+    EXPECT_GT(captured_ns(newer), captured_ns(fresh));
+    EXPECT_EQ(captured_ns(camera.get_images({}, extra_with(LAST_SERVED_FRAME_KEY))), captured_ns(newer));
+    EXPECT_EQ(camera.get_encode_count(), 2);
+
+    // A stopped camera errors instead of serving its last frame
+    camera.stop_pipeline();
+    EXPECT_ANY_THROW(camera.get_images({}, extra_with(LAST_SERVED_FRAME_KEY)));
+}
+
+// Test that the first last_served_frame request encodes one frame, which later
+// last_served_frame requests reuse
+TEST(CSICamera, LastServedFrameEncodesFirstFrame) {
+    ensure_runtime();
+    ScopedDevice pi("pi");
+
+    ProtoStruct attrs;
+    attrs.insert(std::make_pair("encode_on_request", ProtoValue(true)));
+    CSICamera camera("test", attrs);
+
+    auto first = camera.get_images({}, extra_with(LAST_SERVED_FRAME_KEY));
+    expect_jpeg(first);
+    EXPECT_EQ(camera.get_encode_count(), 1);
+    std::this_thread::sleep_for(std::chrono::milliseconds(500));
+    EXPECT_EQ(captured_ns(camera.get_images({}, extra_with(LAST_SERVED_FRAME_KEY))), captured_ns(first));
+    EXPECT_EQ(camera.get_encode_count(), 1);
+    camera.stop_pipeline();
+}
+
+// Test that viam-server's live-view polling gets the last served frame by
+// default, and fresh frames with fresh_frames_for_stream
+TEST(CSICamera, StreamServerGetsLastServedFrame) {
+    ensure_runtime();
+    ScopedDevice pi("pi");
+
+    ProtoStruct attrs;
+    attrs.insert(std::make_pair("encode_on_request", ProtoValue(true)));
+    {
+        CSICamera camera("test", attrs);
+        EXPECT_FALSE(camera.get_fresh_frames_for_stream());
+        auto fresh = camera.get_images({}, ProtoStruct{});
+        std::this_thread::sleep_for(std::chrono::milliseconds(500));
+        EXPECT_EQ(captured_ns(camera.get_images({}, extra_with(FROM_STREAM_SERVER_KEY))), captured_ns(fresh));
+        EXPECT_EQ(camera.get_encode_count(), 1);
+        camera.stop_pipeline();
+    }
+
+    attrs.insert(std::make_pair("fresh_frames_for_stream", ProtoValue(true)));
+    CSICamera camera("test", attrs);
+    EXPECT_TRUE(camera.get_fresh_frames_for_stream());
+    auto fresh = camera.get_images({}, ProtoStruct{});
+    std::this_thread::sleep_for(std::chrono::milliseconds(500));
+    EXPECT_GT(captured_ns(camera.get_images({}, extra_with(FROM_STREAM_SERVER_KEY))), captured_ns(fresh));
+    EXPECT_EQ(camera.get_encode_count(), 2);
+    camera.stop_pipeline();
+}
+
+// Test that last_served_frame behaves the same when every frame is encoded
+TEST(CSICamera, LastServedFrameWithoutEncodeOnRequest) {
+    ensure_runtime();
+
+    ProtoStruct attrs = std::unordered_map<std::string, ProtoValue>();
+    CSICamera camera("test", attrs);
+    auto fresh = camera.get_images({}, ProtoStruct{});
+    std::this_thread::sleep_for(std::chrono::milliseconds(200));
+    auto served = camera.get_images({}, extra_with(LAST_SERVED_FRAME_KEY));
+    EXPECT_EQ(captured_ns(served), captured_ns(fresh));
+    EXPECT_GT(captured_ns(camera.get_images({}, ProtoStruct{})), captured_ns(fresh));
+    camera.stop_pipeline();
+}
+
 // Test that GST pipeline can be started and stopped
 TEST(CSICamera, StartStopPipeline) {
     gst_init(nullptr, nullptr);

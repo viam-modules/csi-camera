@@ -70,6 +70,9 @@ class CSICamera : public viam::sdk::Camera {
     // Pi with encode_on_request: the camera pipeline ends at raw frames and
     // get_images encodes the newest one
     bool raw_frames = false;
+    // Give viam-server's live-view polling fresh frames instead of the last
+    // frame served to a fresh request
+    bool fresh_frames_for_stream = false;
 
     // GST
     GstElement* pipeline = nullptr;
@@ -136,6 +139,24 @@ class CSICamera : public viam::sdk::Camera {
     void wait_for_frame(std::unique_lock<std::mutex>& lock);
     std::chrono::milliseconds max_frame_age() const;
 
+    // The last frame served to a fresh request, which last_served_frame
+    // requests get instead of a new one
+    class served_frame {
+       public:
+        // Keeps frame unless a newer one was already served: concurrent fresh
+        // requests can finish out of order
+        void offer(const cached_frame& frame);
+        // The last served frame; its bytes are null if none has been served
+        cached_frame get();
+
+       private:
+        std::mutex mutex;
+        cached_frame frame;
+    };
+    served_frame last_served;
+    bool wants_last_served(const viam::sdk::ProtoStruct& extra) const;
+    cached_frame serve_fresh_frame();
+    cached_frame get_last_served_frame();
     std::vector<unsigned char> get_csi_image();
     static std::vector<unsigned char> buff_to_vec(GstBuffer* buff);
 
@@ -153,6 +174,7 @@ class CSICamera : public viam::sdk::Camera {
     int get_height_px() const;
     int get_frame_rate() const;
     bool get_encode_on_request() const;
+    bool get_fresh_frames_for_stream() const;
     uint64_t get_encode_count() const;
     std::string get_video_path() const;
     GstBus* get_bus() const;

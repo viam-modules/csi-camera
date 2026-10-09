@@ -32,6 +32,12 @@ constexpr int ENCODE_TIMEOUT_MS = 2000;
 // How often the request and encode counts are logged (debug level)
 constexpr int ENCODE_STATS_INTERVAL_S = 60;
 
+// Request extra keys: last_served_frame asks for the last frame served to a
+// fresh request; viam-server's stream server marks its live-view polling with
+// fromStreamServer
+constexpr const char* LAST_SERVED_FRAME_KEY = "last_served_frame";
+constexpr const char* FROM_STREAM_SERVER_KEY = "fromStreamServer";
+
 // Jetson
 constexpr const char* JETSON_API_SUBTYPE = "csi";
 constexpr const char* JETSON_INPUT_SOURCE = "nvarguscamerasrc";
