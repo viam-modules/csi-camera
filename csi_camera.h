@@ -1,7 +1,9 @@
 #pragma once
 
+#include <atomic>
 #include <chrono>
 #include <condition_variable>
+#include <cstdint>
 #include <map>
 #include <memory>
 #include <mutex>
@@ -9,6 +11,7 @@
 #include <vector>
 
 #include <gst/app/gstappsink.h>
+#include <gst/app/gstappsrc.h>
 #include <gst/gst.h>
 
 #include <viam/sdk/common/exception.hpp>
@@ -29,6 +32,10 @@ class CSICamera : public viam::sdk::Camera {
     int height_px = 0;
     int frame_rate = 0;
     std::string video_path;
+    bool encode_on_request = false;
+    // Pi with encode_on_request: the camera pipeline ends at raw frames and
+    // get_images encodes the newest one
+    bool raw_frames = false;
 
     // GST
     GstElement* pipeline = nullptr;
@@ -37,11 +44,30 @@ class CSICamera : public viam::sdk::Camera {
 
     // Latest-frame cache: written by the GStreamer streaming thread via the
     // appsink new-sample callback, read concurrently by any number of
-    // get_images callers.
+    // get_images callers. With raw_frames it holds the newest raw sample
+    // instead of a JPEG.
     std::mutex frame_mutex;
     std::condition_variable frame_cv;
     std::shared_ptr<const std::vector<unsigned char>> latest_frame;
+    GstSample* latest_sample = nullptr;
+    uint64_t latest_frame_seq = 0;
     std::chrono::system_clock::time_point latest_frame_time;
+
+    // On-request encoding (raw_frames): appsrc ! encoder ! appsink, driven one
+    // frame at a time under encode_mutex, which also guards the encoded-frame
+    // cache so concurrent requests for the same frame share one encode
+    GstElement* encode_pipeline = nullptr;
+    GstElement* encode_src = nullptr;
+    GstElement* encode_sink = nullptr;
+    std::mutex encode_mutex;
+    std::shared_ptr<const std::vector<unsigned char>> encoded_frame;
+    uint64_t encoded_seq = 0;
+    std::chrono::system_clock::time_point encoded_time;
+    std::atomic<uint64_t> encode_count{0};
+    // Requests and encodes since stats_start, logged at debug level
+    int stats_requests = 0;
+    int stats_encodes = 0;
+    std::chrono::steady_clock::time_point stats_start;
 
     // Pipeline failure reporting
     void check_bus();
@@ -84,7 +110,14 @@ class CSICamera : public viam::sdk::Camera {
         std::chrono::system_clock::time_point captured_at;
     };
     cached_frame get_latest_frame();
+    void wait_for_frame(std::unique_lock<std::mutex>& lock);
     std::chrono::milliseconds max_frame_age() const;
+
+    // On-request encoding (raw_frames)
+    void init_encoder();
+    void stop_encoder();
+    cached_frame encode_frame(GstSample* sample, uint64_t seq, std::chrono::system_clock::time_point captured_at);
+    void count_request(bool encoded);
     std::vector<unsigned char> get_csi_image();
     std::vector<unsigned char> buff_to_vec(GstBuffer* buff);
 
@@ -101,6 +134,8 @@ class CSICamera : public viam::sdk::Camera {
     int get_width_px() const;
     int get_height_px() const;
     int get_frame_rate() const;
+    bool get_encode_on_request() const;
+    uint64_t get_encode_count() const;
     std::string get_video_path() const;
     GstBus* get_bus() const;
     GstElement* get_appsink() const;
