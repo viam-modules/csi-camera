@@ -58,20 +58,21 @@ struct get_as_type<int> {
     using type = double;
 };
 
-struct gst_object_deleter {
-    void operator()(gpointer p) const {
-        gst_object_unref(p);
+template <typename T, auto unref_fn>
+struct gst_deleter {
+    void operator()(T* p) const {
+        unref_fn(p);
     }
 };
 
-struct gst_message_deleter {
-    void operator()(GstMessage* msg) const {
-        gst_message_unref(msg);
-    }
-};
+template <typename T, auto unref_fn>
+using gst_ptr = std::unique_ptr<T, gst_deleter<T, unref_fn>>;
 
-using gst_bus_ptr = std::unique_ptr<GstBus, gst_object_deleter>;
-using gst_message_ptr = std::unique_ptr<GstMessage, gst_message_deleter>;
+using gst_buffer_ptr = gst_ptr<GstBuffer, gst_buffer_unref>;
+using gst_bus_ptr = gst_ptr<GstBus, gst_object_unref>;
+using gst_element_ptr = gst_ptr<GstElement, gst_object_unref>;
+using gst_message_ptr = gst_ptr<GstMessage, gst_message_unref>;
+using gst_pad_ptr = gst_ptr<GstPad, gst_object_unref>;
 
 }  // namespace
 
