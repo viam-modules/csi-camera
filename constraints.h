@@ -23,6 +23,20 @@ constexpr int DEFAULT_INPUT_FRAMERATE = 30;
 constexpr const char* DEFAULT_VIDEO_CONVERTER = "videoconvert";
 constexpr const char* DEFAULT_OUTPUT_ENCODER = "nvjpegenc";
 constexpr const char* DEFAULT_OUTPUT_MIMETYPE = "image/jpeg";
+constexpr const char* ENCODER_NAME = "encoder0";
+
+// On-request encoding: frames are pushed into encodesrc one at a time
+constexpr const char* ENCODE_SRC_NAME = "encodesrc";
+constexpr const char* ENCODE_SINK_NAME = "encodesink";
+constexpr int ENCODE_TIMEOUT_MS = 2000;
+// How often the request and encode counts are logged (debug level)
+constexpr int ENCODE_STATS_INTERVAL_S = 60;
+
+// Request extra keys: last_served_frame asks for the last frame served to a
+// fresh request; viam-server's stream server marks its live-view polling with
+// fromStreamServer
+constexpr const char* LAST_SERVED_FRAME_KEY = "last_served_frame";
+constexpr const char* FROM_STREAM_SERVER_KEY = "fromStreamServer";
 
 // Jetson
 constexpr const char* JETSON_API_SUBTYPE = "csi";
@@ -34,10 +48,15 @@ constexpr const char* JETSON_OUTPUT_ENCODER = "nvjpegenc";
 // Pi
 constexpr const char* PI_API_SUBTYPE = "csi-pi";
 constexpr const char* PI_INPUT_SOURCE = "libcamerasrc";
-constexpr const char* PI_INPUT_FORMAT = "video/x-raw,format=NV12";
+constexpr const char* PI_INPUT_FORMAT = "video/x-raw,format=I420";
 constexpr const char* PI_VIDEO_CONVERTER = "videoconvert";
 constexpr const char* PI_OUTPUT_ENCODER = "jpegenc";
 
 // Integration Tests
-inline const std::string TEST_GST_PIPELINE =
-    "videotestsrc ! video/x-raw ! videoconvert ! jpegenc ! image/jpeg ! appsink name=appsink0 sync=false max-buffers=1 drop=true";
+inline const std::string TEST_GST_PIPELINE = std::string("videotestsrc ! video/x-raw ! videoconvert ! jpegenc name=") + ENCODER_NAME +
+                                             " ! image/jpeg ! appsink name=appsink0 sync=false max-buffers=1 drop=true";
+// Raw frames for encode_on_request, at a live 5 fps so that back-to-back
+// requests usually see the same frame
+inline const std::string TEST_RAW_GST_PIPELINE =
+    "videotestsrc is-live=true ! video/x-raw,format=I420,width=320,height=240,framerate=5/1 ! appsink name=appsink0 sync=false "
+    "max-buffers=1 drop=true";

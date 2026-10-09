@@ -127,8 +127,16 @@ The following attributes are available for `viam:camera:csi` cameras:
 | `width_px` | int | Optional | Width of the image this camera captures in pixels. <br> Default: `1920` |
 | `height_px` | int | Optional | Height of the image this camera captures in pixels. <br> Default: `1080` |
 | `frame_rate` | int | Optional | The image capture frame rate this camera should use. <br> Default: `30` |
+| `encode_on_request` | bool | Optional | Encode a JPEG only when an image is requested, from the newest frame, instead of encoding every frame. Requests for the same frame share one encode. <br> Default: `false` |
+| `fresh_frames_for_stream` | bool | Optional | Give the live view in the Viam app (viam-server's stream server) fresh frames. When false, its polling gets the last frame served to a fresh request, which costs no encode. <br> Default: `false` |
 
 Once configured, check the [Logs tab](https://docs.viam.com/program/debug/) of your robot in the Viam app to make sure your camera has connected and no errors are being raised.
+
+#### Last served frame
+
+A `GetImages` request with `extra` set to `{"last_served_frame": true}` gets the last frame this camera served to a fresh request, with that frame's capture time, instead of a new frame. It costs no encode, and still errors if the camera has stopped delivering frames. If no frame has been served yet, it gets a fresh one.
+
+viam-server's stream server marks its live-view polling with `{"fromStreamServer": true}`, which is treated the same way unless `fresh_frames_for_stream` is true. Requests without either key always get a fresh frame.
 
 ### Example Configuration
 

@@ -2,6 +2,7 @@
 
 #include <chrono>
 #include <condition_variable>
+#include <cstdint>
 #include <map>
 #include <memory>
 #include <mutex>
@@ -19,6 +20,42 @@
 
 #include "utils.h"
 
+// Owning pointers for GStreamer references: gst_ptr<T, unref_fn> releases its
+// reference with unref_fn
+template <typename T, auto unref_fn>
+struct gst_deleter {
+    void operator()(T* p) const {
+        unref_fn(p);
+    }
+};
+
+template <typename T, auto unref_fn>
+using gst_ptr = std::unique_ptr<T, gst_deleter<T, unref_fn>>;
+
+// Older GStreamer (e.g. 1.16) defines the mini-object unrefs, such as
+// gst_sample_unref, as static inline functions; a class member whose type
+// names one gets different types in different translation units, so these go
+// through the exported gst_mini_object_unref
+template <typename T>
+inline void gst_mini_object_release(T* p) {
+    gst_mini_object_unref(GST_MINI_OBJECT_CAST(p));
+}
+
+using gst_buffer_ptr = gst_ptr<GstBuffer, gst_mini_object_release<GstBuffer>>;
+using gst_bus_ptr = gst_ptr<GstBus, gst_object_unref>;
+using gst_caps_ptr = gst_ptr<GstCaps, gst_mini_object_release<GstCaps>>;
+using gst_element_ptr = gst_ptr<GstElement, gst_object_unref>;
+using gst_message_ptr = gst_ptr<GstMessage, gst_mini_object_release<GstMessage>>;
+using gst_pad_ptr = gst_ptr<GstPad, gst_object_unref>;
+using gst_sample_ptr = gst_ptr<GstSample, gst_mini_object_release<GstSample>>;
+
+// Stops a pipeline before releasing it, so it never outlives its owner running
+inline void gst_pipeline_stop_and_unref(GstElement* pipeline) {
+    gst_element_set_state(pipeline, GST_STATE_NULL);
+    gst_object_unref(pipeline);
+}
+using gst_pipeline_ptr = gst_ptr<GstElement, gst_pipeline_stop_and_unref>;
+
 class CSICamera : public viam::sdk::Camera {
    private:
     // Device
@@ -29,6 +66,13 @@ class CSICamera : public viam::sdk::Camera {
     int height_px = 0;
     int frame_rate = 0;
     std::string video_path;
+    bool encode_on_request = false;
+    // Pi with encode_on_request: the camera pipeline ends at raw frames and
+    // get_images encodes the newest one
+    bool raw_frames = false;
+    // Give viam-server's live-view polling fresh frames instead of the last
+    // frame served to a fresh request
+    bool fresh_frames_for_stream = false;
 
     // GST
     GstElement* pipeline = nullptr;
@@ -37,11 +81,19 @@ class CSICamera : public viam::sdk::Camera {
 
     // Latest-frame cache: written by the GStreamer streaming thread via the
     // appsink new-sample callback, read concurrently by any number of
-    // get_images callers.
+    // get_images callers. With raw_frames it holds the newest raw sample
+    // instead of a JPEG.
     std::mutex frame_mutex;
     std::condition_variable frame_cv;
     std::shared_ptr<const std::vector<unsigned char>> latest_frame;
+    gst_sample_ptr latest_sample;
+    uint64_t latest_frame_seq = 0;
     std::chrono::system_clock::time_point latest_frame_time;
+
+    // On-request encoding: owns the encode pipeline and the last encoded
+    // frame; set only with raw_frames (defined in csi_camera.cpp)
+    class frame_encoder;
+    std::unique_ptr<frame_encoder> encoder;
 
     // Pipeline failure reporting
     void check_bus();
@@ -84,9 +136,33 @@ class CSICamera : public viam::sdk::Camera {
         std::chrono::system_clock::time_point captured_at;
     };
     cached_frame get_latest_frame();
+    void wait_for_frame(std::unique_lock<std::mutex>& lock);
     std::chrono::milliseconds max_frame_age() const;
+
+    // The last frame served to a fresh request, which last_served_frame
+    // requests get instead of a new one
+    class served_frame {
+       public:
+        // Keeps frame unless a newer one was already served: concurrent fresh
+        // requests can finish out of order
+        void offer(const cached_frame& frame);
+        // The last served frame; its bytes are null if none has been served
+        cached_frame get();
+
+       private:
+        std::mutex mutex;
+        cached_frame frame;
+    };
+    served_frame last_served;
+    bool wants_last_served(const viam::sdk::ProtoStruct& extra) const;
+    cached_frame serve_fresh_frame();
+    cached_frame get_last_served_frame();
     std::vector<unsigned char> get_csi_image();
-    std::vector<unsigned char> buff_to_vec(GstBuffer* buff);
+    static std::vector<unsigned char> buff_to_vec(GstBuffer* buff);
+
+    // Pi only: makes the encoder read each frame from a copy in system memory
+    void copy_encoder_input();
+    static GstPadProbeReturn on_encoder_input(GstPad* pad, GstPadProbeInfo* info, gpointer user_data);
 
     // Appsink new-sample callback: invoked on the GStreamer streaming thread
     // for every frame, stores it in the latest-frame cache
@@ -97,6 +173,9 @@ class CSICamera : public viam::sdk::Camera {
     int get_width_px() const;
     int get_height_px() const;
     int get_frame_rate() const;
+    bool get_encode_on_request() const;
+    bool get_fresh_frames_for_stream() const;
+    uint64_t get_encode_count() const;
     std::string get_video_path() const;
     GstBus* get_bus() const;
     GstElement* get_appsink() const;
