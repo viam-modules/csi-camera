@@ -159,6 +159,34 @@ TEST(CSICamera, CapturedAtIsRecent) {
     camera.stop_pipeline();
 }
 
+// Test that on a Pi the encoder still produces JPEGs when it reads each frame
+// from a copy in system memory
+TEST(CSICamera, PiEncodesCopiedFrames) {
+    ensure_runtime();
+
+    const char* prev = std::getenv("VIAM_CSI_DEVICE");
+    const std::string prev_device = prev ? prev : "";
+    setenv("VIAM_CSI_DEVICE", "pi", 1);
+
+    ProtoStruct attrs = std::unordered_map<std::string, ProtoValue>();
+    CSICamera camera("test", attrs);
+    for (int i = 0; i < 3; i++) {
+        auto collection = camera.get_images({}, ProtoStruct{});
+        ASSERT_EQ(collection.images.size(), 1);
+        const auto& bytes = collection.images[0].bytes;
+        ASSERT_GE(bytes.size(), 2);
+        EXPECT_EQ(bytes[0], 0xFF);
+        EXPECT_EQ(bytes[1], 0xD8);
+    }
+    camera.stop_pipeline();
+
+    if (prev) {
+        setenv("VIAM_CSI_DEVICE", prev_device.c_str(), 1);
+    } else {
+        unsetenv("VIAM_CSI_DEVICE");
+    }
+}
+
 // Test that GST pipeline can be started and stopped
 TEST(CSICamera, StartStopPipeline) {
     gst_init(nullptr, nullptr);
