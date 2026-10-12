@@ -88,6 +88,10 @@ class CSICamera : public viam::sdk::Camera {
     std::vector<unsigned char> get_csi_image();
     std::vector<unsigned char> buff_to_vec(GstBuffer* buff);
 
+    // Pi only: makes the encoder read each frame from a copy in system memory
+    void copy_encoder_input();
+    static GstPadProbeReturn on_encoder_input(GstPad* pad, GstPadProbeInfo* info, gpointer user_data);
+
     // Appsink new-sample callback: invoked on the GStreamer streaming thread
     // for every frame, stores it in the latest-frame cache
     static GstFlowReturn on_new_sample(GstAppSink* sink, gpointer user_data);

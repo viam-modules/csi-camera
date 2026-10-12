@@ -58,20 +58,21 @@ struct get_as_type<int> {
     using type = double;
 };
 
-struct gst_object_deleter {
-    void operator()(gpointer p) const {
-        gst_object_unref(p);
+template <typename T, auto unref_fn>
+struct gst_deleter {
+    void operator()(T* p) const {
+        unref_fn(p);
     }
 };
 
-struct gst_message_deleter {
-    void operator()(GstMessage* msg) const {
-        gst_message_unref(msg);
-    }
-};
+template <typename T, auto unref_fn>
+using gst_ptr = std::unique_ptr<T, gst_deleter<T, unref_fn>>;
 
-using gst_bus_ptr = std::unique_ptr<GstBus, gst_object_deleter>;
-using gst_message_ptr = std::unique_ptr<GstMessage, gst_message_deleter>;
+using gst_buffer_ptr = gst_ptr<GstBuffer, gst_buffer_unref>;
+using gst_bus_ptr = gst_ptr<GstBus, gst_object_unref>;
+using gst_element_ptr = gst_ptr<GstElement, gst_object_unref>;
+using gst_message_ptr = gst_ptr<GstMessage, gst_message_unref>;
+using gst_pad_ptr = gst_ptr<GstPad, gst_object_unref>;
 
 }  // namespace
 
@@ -151,6 +152,10 @@ void CSICamera::init_csi(const std::string pipeline_args) {
         fail_pipeline("Failed to get the appsink element");
     }
 
+    if (device.value == device_type::pi) {
+        copy_encoder_input();
+    }
+
     // Store every frame in the latest-frame cache as it arrives, so that
     // concurrent consumers read the cache instead of competing for samples
     g_object_set(G_OBJECT(appsink), "emit-signals", TRUE, nullptr);
@@ -172,6 +177,34 @@ void CSICamera::init_csi(const std::string pipeline_args) {
     if (!bus) {
         fail_pipeline("Failed to get the bus for the pipeline");
     }
+}
+
+// libcamerasrc hands out its dmabufs mapped uncached, and jpegenc and libjpeg
+// read them with small loads (about 26 cycles per byte on a CM5). One memcpy
+// into system memory (about 2.4 ms for a 1080p frame) and encoding from cached
+// memory cut the module from 44% to 12% of a CM5 core at 1080p and 10 fps.
+void CSICamera::copy_encoder_input() {
+    gst_element_ptr encoder{gst_bin_get_by_name(GST_BIN(pipeline), ENCODER_NAME)};
+    if (!encoder) {
+        VIAM_RESOURCE_LOG(debug) << "No element named " << ENCODER_NAME << "; encoding straight from the source buffers";
+        return;
+    }
+    gst_pad_ptr pad{gst_element_get_static_pad(encoder.get(), "sink")};
+    if (!pad) {
+        fail_pipeline("Failed to get the encoder sink pad");
+    }
+    gst_pad_add_probe(pad.get(), GST_PAD_PROBE_TYPE_BUFFER, &CSICamera::on_encoder_input, nullptr, nullptr);
+}
+
+GstPadProbeReturn CSICamera::on_encoder_input(GstPad* /* pad */, GstPadProbeInfo* info, gpointer /* user_data */) {
+    gst_buffer_ptr copy{gst_buffer_copy_deep(GST_PAD_PROBE_INFO_BUFFER(info))};
+    if (copy) {
+        // The probe owns the original's reference; it is released here and
+        // the copy travels on in its place
+        gst_buffer_ptr original{GST_PAD_PROBE_INFO_BUFFER(info)};
+        GST_PAD_PROBE_INFO_DATA(info) = copy.release();
+    }
+    return GST_PAD_PROBE_OK;
 }
 
 std::string CSICamera::mode_hint() const {
@@ -432,7 +465,7 @@ std::string CSICamera::create_pipeline() const {
     std::ostringstream oss;
     oss << device_params.input_source << input_sensor << " ! " << device_params.input_format << ",width=" << std::to_string(width_px)
         << ",height=" << std::to_string(height_px) << ",framerate=" << std::to_string(frame_rate) << "/1 ! "
-        << device_params.video_converter << " ! " << device_params.output_encoder << " ! "
+        << device_params.video_converter << " ! " << device_params.output_encoder << " name=" << ENCODER_NAME << " ! "
         << "image/jpeg"
         << " ! appsink name=appsink0 sync=false max-buffers=1 drop=true";
 

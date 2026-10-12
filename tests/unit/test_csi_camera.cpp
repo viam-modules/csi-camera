@@ -4,6 +4,7 @@
 #include <thread>
 #include <viam/sdk/common/instance.hpp>
 #include <viam/sdk/common/proto_convert.hpp>
+#include <viam/sdk/common/utils.hpp>
 #include <viam/sdk/components/camera.hpp>
 
 #include "../../constraints.h"
@@ -157,6 +158,33 @@ TEST(CSICamera, CapturedAtIsRecent) {
     EXPECT_LE(age.count(), camera.max_frame_age().count());
 
     camera.stop_pipeline();
+}
+
+// Test that on a Pi the encoder still produces JPEGs when it reads each frame
+// from a copy in system memory
+TEST(CSICamera, PiEncodesCopiedFrames) {
+    ensure_runtime();
+
+    const auto prev_device = viam::sdk::get_env("VIAM_CSI_DEVICE");
+    setenv("VIAM_CSI_DEVICE", "pi", 1);
+
+    ProtoStruct attrs = std::unordered_map<std::string, ProtoValue>();
+    CSICamera camera("test", attrs);
+    for (int i = 0; i < 3; i++) {
+        auto collection = camera.get_images({}, ProtoStruct{});
+        ASSERT_EQ(collection.images.size(), 1);
+        const auto& bytes = collection.images[0].bytes;
+        ASSERT_GE(bytes.size(), 2);
+        EXPECT_EQ(bytes[0], 0xFF);
+        EXPECT_EQ(bytes[1], 0xD8);
+    }
+    camera.stop_pipeline();
+
+    if (prev_device) {
+        setenv("VIAM_CSI_DEVICE", prev_device->c_str(), 1);
+    } else {
+        unsetenv("VIAM_CSI_DEVICE");
+    }
 }
 
 // Test that GST pipeline can be started and stopped
