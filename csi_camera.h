@@ -70,9 +70,9 @@ class CSICamera : public viam::sdk::Camera {
     // Pi with encode_on_request: the camera pipeline ends at raw frames and
     // get_images encodes the newest one
     bool raw_frames = false;
-    // Give viam-server's live-view polling fresh frames instead of the last
-    // frame served to a fresh request
-    bool fresh_frames_for_stream = false;
+    // Give viam-server's live-view polling the last frame served to a fresh
+    // request instead of a fresh frame
+    bool last_served_frame_for_stream = false;
 
     // GST
     GstElement* pipeline = nullptr;
@@ -174,7 +174,7 @@ class CSICamera : public viam::sdk::Camera {
     int get_height_px() const;
     int get_frame_rate() const;
     bool get_encode_on_request() const;
-    bool get_fresh_frames_for_stream() const;
+    bool get_last_served_frame_for_stream() const;
     uint64_t get_encode_count() const;
     std::string get_video_path() const;
     GstBus* get_bus() const;

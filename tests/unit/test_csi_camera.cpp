@@ -341,9 +341,9 @@ TEST(CSICamera, LastServedFrameEncodesFirstFrame) {
     camera.stop_pipeline();
 }
 
-// Test that viam-server's live-view polling gets the last served frame by
-// default, and fresh frames with fresh_frames_for_stream
-TEST(CSICamera, StreamServerGetsLastServedFrame) {
+// Test that viam-server's live-view polling gets fresh frames by default, and
+// the last served frame with last_served_frame_for_stream
+TEST(CSICamera, StreamServerGetsLastServedFrameWhenSet) {
     ensure_runtime();
     ScopedDevice pi("pi");
 
@@ -351,21 +351,21 @@ TEST(CSICamera, StreamServerGetsLastServedFrame) {
     attrs.insert(std::make_pair("encode_on_request", ProtoValue(true)));
     {
         CSICamera camera("test", attrs);
-        EXPECT_FALSE(camera.get_fresh_frames_for_stream());
+        EXPECT_FALSE(camera.get_last_served_frame_for_stream());
         auto fresh = camera.get_images({}, ProtoStruct{});
         std::this_thread::sleep_for(std::chrono::milliseconds(500));
-        EXPECT_EQ(captured_ns(camera.get_images({}, extra_with(FROM_STREAM_SERVER_KEY))), captured_ns(fresh));
-        EXPECT_EQ(camera.get_encode_count(), 1);
+        EXPECT_GT(captured_ns(camera.get_images({}, extra_with(FROM_STREAM_SERVER_KEY))), captured_ns(fresh));
+        EXPECT_EQ(camera.get_encode_count(), 2);
         camera.stop_pipeline();
     }
 
-    attrs.insert(std::make_pair("fresh_frames_for_stream", ProtoValue(true)));
+    attrs.insert(std::make_pair("last_served_frame_for_stream", ProtoValue(true)));
     CSICamera camera("test", attrs);
-    EXPECT_TRUE(camera.get_fresh_frames_for_stream());
+    EXPECT_TRUE(camera.get_last_served_frame_for_stream());
     auto fresh = camera.get_images({}, ProtoStruct{});
     std::this_thread::sleep_for(std::chrono::milliseconds(500));
-    EXPECT_GT(captured_ns(camera.get_images({}, extra_with(FROM_STREAM_SERVER_KEY))), captured_ns(fresh));
-    EXPECT_EQ(camera.get_encode_count(), 2);
+    EXPECT_EQ(captured_ns(camera.get_images({}, extra_with(FROM_STREAM_SERVER_KEY))), captured_ns(fresh));
+    EXPECT_EQ(camera.get_encode_count(), 1);
     camera.stop_pipeline();
 }
 

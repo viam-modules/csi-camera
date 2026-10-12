@@ -218,7 +218,7 @@ void CSICamera::validate_attrs(const ProtoStruct& attrs) {
     if (encode_on_request && !raw_frames) {
         VIAM_RESOURCE_LOG(warn) << "encode_on_request is only supported on a Raspberry Pi; encoding every frame on " << device.name;
     }
-    set_attr<bool>(attrs, "fresh_frames_for_stream", &CSICamera::fresh_frames_for_stream, false);
+    set_attr<bool>(attrs, "last_served_frame_for_stream", &CSICamera::last_served_frame_for_stream, false);
 }
 
 namespace {
@@ -632,11 +632,11 @@ CSICamera::cached_frame CSICamera::get_latest_frame() {
     return encoder->encode(std::move(sample), seq, captured_at);
 }
 
-// A last_served_frame request, or viam-server's live-view polling unless
-// fresh_frames_for_stream is set, gets the last frame served to a fresh
+// A last_served_frame request, or viam-server's live-view polling with
+// last_served_frame_for_stream set, gets the last frame served to a fresh
 // request instead of a new one
 bool CSICamera::wants_last_served(const ProtoStruct& extra) const {
-    return extra_flag(extra, LAST_SERVED_FRAME_KEY) || (!fresh_frames_for_stream && extra_flag(extra, FROM_STREAM_SERVER_KEY));
+    return extra_flag(extra, LAST_SERVED_FRAME_KEY) || (last_served_frame_for_stream && extra_flag(extra, FROM_STREAM_SERVER_KEY));
 }
 
 CSICamera::cached_frame CSICamera::serve_fresh_frame() {
@@ -770,8 +770,8 @@ bool CSICamera::get_encode_on_request() const {
     return encode_on_request;
 }
 
-bool CSICamera::get_fresh_frames_for_stream() const {
-    return fresh_frames_for_stream;
+bool CSICamera::get_last_served_frame_for_stream() const {
+    return last_served_frame_for_stream;
 }
 
 uint64_t CSICamera::get_encode_count() const {
