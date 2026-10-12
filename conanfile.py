@@ -31,6 +31,8 @@ class ViamCsi(ConanFile):
         "utils.cpp",
         "utils.h",
         "constraints.h",
+        "discovery_caps.cpp",
+        "discovery_caps.h",
         "meta.json",
         "meta-pi.json",
         "first_run.sh",
