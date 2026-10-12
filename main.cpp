@@ -28,12 +28,11 @@ int main(int argc, char* argv[]) try {
 
     // Fetch the device type (Jetson, Pi, Unknown)
     auto device = csi::get_device_type();
-    auto api_params = csi::get_api_params(device);
     VIAM_SDK_LOG(info) << "Device type: " << device.name;
 
     auto module_registration = std::make_shared<ModelRegistration>(
         API::get<Camera>(),
-        Model{api_params.api_namespace, api_params.api_type, api_params.api_subtype},
+        Model{csi::API_NAMESPACE, csi::API_TYPE, csi::API_SUBTYPE},
         [](Dependencies, ResourceConfig resource_config) -> std::shared_ptr<Resource> {
             return std::make_shared<csi::CSICamera>(resource_config.name(), resource_config.attributes());
         });

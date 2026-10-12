@@ -68,15 +68,4 @@ device_params get_device_params(device_type device) {
     }
 }
 
-api_params get_api_params(device_type device) {
-    switch (device.value) {
-        case device_type::jetson:
-            return api_params{.api_namespace = API_NAMESPACE, .api_type = API_TYPE, .api_subtype = JETSON_API_SUBTYPE};
-        case device_type::pi:
-            return api_params{.api_namespace = API_NAMESPACE, .api_type = API_TYPE, .api_subtype = PI_API_SUBTYPE};
-        default:
-            return api_params{.api_namespace = API_NAMESPACE, .api_type = API_TYPE, .api_subtype = DEFAULT_API_SUBTYPE};
-    }
-}
-
 }  // namespace csi

@@ -65,7 +65,7 @@ func TestCameraServer(t *testing.T) {
 					{
 					"name": "%v",
 					"api": "rdk:component:camera",
-					"model": "viam:camera:csi-pi",
+					"model": "viam:camera:csi",
 					"attributes": {},
 					"depends_on": []
 					}
@@ -73,7 +73,7 @@ func TestCameraServer(t *testing.T) {
 				"modules": [
 					{
 					"type": "local",
-					"name": "viam_csi-cam-pi",
+					"name": "viam_csi-cam",
 					"executable_path": "%v"
 					}
 				]

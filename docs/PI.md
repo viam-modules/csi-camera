@@ -2,7 +2,7 @@
 
 ## Dependencies
 
-The `csi-cam-pi` module links against the host GStreamer and uses the Raspberry Pi OS `libcamerasrc` plugin. On first install the module's `first_run.sh` runs `apt-get install` for
+On a Raspberry Pi the module links against the host GStreamer and uses the Raspberry Pi OS `libcamerasrc` plugin. On first install the module's `first_run.sh` runs `apt-get install` for
 `libgstreamer1.0-0 gstreamer1.0-plugins-base gstreamer1.0-plugins-good gstreamer1.0-libcamera`
 (as root, or via passwordless `sudo`). If that is not possible on your machine, install them yourself:
 
