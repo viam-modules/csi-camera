@@ -47,11 +47,18 @@ set(CPACK_GENERATOR "TGZ")
 set(CPACK_INCLUDE_TOPLEVEL_DIRECTORY 0)
 include(CPack)
 
+# Dev-only probe for inspecting Video/Source devices and their caps on a board.
+option(VIAM_CSI_ENABLE_PROBE "Build the gstreamer device probe tool" OFF)
+if(VIAM_CSI_ENABLE_PROBE)
+    add_executable(gst_device_probe spike/gst_device_probe.cpp discovery_caps.cpp)
+    target_link_libraries(gst_device_probe gstreamer::gstreamer)
+endif()
+
 if(VIAM_CSI_ENABLE_TESTS)
     enable_testing()
     find_package(GTest REQUIRED)
 
-    add_executable(${PROJECT_NAME}_test tests/unit/test_csi_camera.cpp)
+    add_executable(${PROJECT_NAME}_test tests/unit/test_csi_camera.cpp tests/unit/test_discovery_caps.cpp discovery_caps.cpp)
 
     target_link_libraries(${PROJECT_NAME}_test
             gstreamer::gstreamer
