@@ -20,6 +20,8 @@
 
 #include "utils.h"
 
+namespace csi {
+
 // Owning pointers for GStreamer references: gst_ptr<T, unref_fn> releases its
 // reference with unref_fn
 template <typename T, auto unref_fn>
@@ -181,3 +183,5 @@ class CSICamera : public viam::sdk::Camera {
     GstElement* get_appsink() const;
     GstElement* get_pipeline() const;
 };
+
+}  // namespace csi

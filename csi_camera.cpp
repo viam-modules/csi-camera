@@ -16,6 +16,8 @@
 
 using namespace viam::sdk;
 
+namespace csi {
+
 // Encodes raw frames on request (encode_on_request). Owns a second
 // appsrc ! encoder ! appsink pipeline, driven one frame at a time under its
 // lock, and the last encoded frame, so concurrent requests for the same frame
@@ -789,3 +791,5 @@ GstElement* CSICamera::get_pipeline() const {
 GstBus* CSICamera::get_bus() const {
     return bus;
 }
+
+}  // namespace csi

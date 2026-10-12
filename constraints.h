@@ -2,6 +2,8 @@
 
 #include <string>
 
+namespace csi {
+
 // Module
 constexpr const char* DEFAULT_SOCKET_PATH = "/tmp/viam.csi.sock";
 constexpr const char* RESOURCE_TYPE = "CSICamera";
@@ -60,3 +62,5 @@ inline const std::string TEST_GST_PIPELINE = std::string("videotestsrc ! video/x
 inline const std::string TEST_RAW_GST_PIPELINE =
     "videotestsrc is-live=true ! video/x-raw,format=I420,width=320,height=240,framerate=5/1 ! appsink name=appsink0 sync=false "
     "max-buffers=1 drop=true";
+
+}  // namespace csi

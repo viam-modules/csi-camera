@@ -3,6 +3,8 @@
 
 #include "utils.h"
 
+namespace csi {
+
 device_type get_device_type() {
     // Check for environment variable override
     const char* env_raw = std::getenv("VIAM_CSI_DEVICE");
@@ -76,3 +78,5 @@ api_params get_api_params(device_type device) {
             return api_params{.api_namespace = API_NAMESPACE, .api_type = API_TYPE, .api_subtype = DEFAULT_API_SUBTYPE};
     }
 }
+
+}  // namespace csi
