@@ -9,6 +9,12 @@
       "model": "viam:camera:csi",
       "markdown_link": "README.md#configure-your-csi-camera",
       "short_description" :"A module for the CSI camera on the Nvidia Jetson"
+    },
+    {
+      "api": "rdk:service:discovery",
+      "model": "viam:camera:csi-discovery",
+      "markdown_link": "README.md#configure-csi-camera-discovery",
+      "short_description" :"Discovers CSI cameras and their supported resolutions"
     }
   ],
   "entrypoint": "viam-csi",

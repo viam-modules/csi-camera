@@ -8,9 +8,11 @@
 #include <viam/sdk/module/service.hpp>
 #include <viam/sdk/registry/registry.hpp>
 #include <viam/sdk/resource/resource.hpp>
+#include <viam/sdk/services/discovery.hpp>
 
 #include "constraints.h"
 #include "csi_camera.h"
+#include "discovery.h"
 #include "utils.h"
 
 using namespace viam::sdk;
@@ -38,7 +40,15 @@ int main(int argc, char* argv[]) try {
                                                 return std::make_shared<CSICamera>(resource_config.name(), resource_config.attributes());
                                             });
 
-    std::vector<std::shared_ptr<ModelRegistration>> mrs = {module_registration};
+    auto discovery_registration =
+        std::make_shared<ModelRegistration>(API::get<Discovery>(),
+                                            Model{API_NAMESPACE, API_TYPE, DISCOVERY_API_SUBTYPE},
+                                            [device](Dependencies, ResourceConfig resource_config) -> std::shared_ptr<Resource> {
+                                                return std::make_shared<CSIDiscovery>(
+                                                    resource_config.name(), device, make_enumerator(device));
+                                            });
+
+    std::vector<std::shared_ptr<ModelRegistration>> mrs = {module_registration, discovery_registration};
     auto module_service = std::make_shared<ModuleService>(argc, argv, mrs);
 
     module_service->serve();
