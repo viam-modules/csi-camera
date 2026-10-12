@@ -59,8 +59,7 @@ std::vector<ResourceConfig> build_configs(const std::vector<sensor_mode>& modes,
         }
         used_names.insert(unique);
 
-        configs.emplace_back(
-            "camera", unique, API_NAMESPACE, attributes, "rdk:component:camera", model, log_level::info);
+        configs.emplace_back("camera", unique, API_NAMESPACE, attributes, "rdk:component:camera", model, log_level::info);
     }
     return configs;
 }
