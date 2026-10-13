@@ -1,5 +1,6 @@
 #pragma once
 
+#include <chrono>
 #include <string>
 
 // Module
@@ -25,6 +26,11 @@ constexpr const char* DEFAULT_OUTPUT_ENCODER = "nvjpegenc";
 constexpr const char* DEFAULT_OUTPUT_MIMETYPE = "image/jpeg";
 constexpr const char* ENCODER_NAME = "encoder0";
 
+// On-request encoding: frames are pushed into encodesrc one at a time
+constexpr const char* ENCODE_SRC_NAME = "encodesrc";
+constexpr const char* ENCODE_SINK_NAME = "encodesink";
+constexpr std::chrono::milliseconds ENCODE_TIMEOUT{2000};
+
 // Jetson
 constexpr const char* JETSON_API_SUBTYPE = "csi";
 constexpr const char* JETSON_INPUT_SOURCE = "nvarguscamerasrc";
@@ -42,3 +48,8 @@ constexpr const char* PI_OUTPUT_ENCODER = "jpegenc";
 // Integration Tests
 inline const std::string TEST_GST_PIPELINE = std::string("videotestsrc ! video/x-raw ! videoconvert ! jpegenc name=") + ENCODER_NAME +
                                              " ! image/jpeg ! appsink name=appsink0 sync=false max-buffers=1 drop=true";
+// Raw frames for encode_on_request, at a live 5 fps so that back-to-back
+// requests usually see the same frame
+inline const std::string TEST_RAW_GST_PIPELINE =
+    "videotestsrc is-live=true ! video/x-raw,format=I420,width=320,height=240,framerate=5/1 ! appsink name=appsink0 sync=false "
+    "max-buffers=1 drop=true";
