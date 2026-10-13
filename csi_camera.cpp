@@ -3,7 +3,6 @@
 #include <chrono>
 #include <cstring>
 #include <fstream>
-#include <functional>
 #include <sstream>
 #include <stdexcept>
 #include <thread>
@@ -20,12 +19,11 @@ using namespace viam::sdk;
 // appsrc ! encoder ! appsink pipeline, driven one frame at a time under its
 // lock, and the last encoded frame, so concurrent requests for the same frame
 // share one encode.
-class CSICamera::frame_encoder {
+class CSICamera::FrameEncoder {
    public:
-    // log receives the periodic request and encode counts
-    frame_encoder(const std::string& encoder_element, std::function<void(const std::string&)> log);
-    frame_encoder(const frame_encoder&) = delete;
-    frame_encoder& operator=(const frame_encoder&) = delete;
+    explicit FrameEncoder(const std::string& encoder_element);
+    FrameEncoder(const FrameEncoder&) = delete;
+    FrameEncoder& operator=(const FrameEncoder&) = delete;
 
     // Encodes the raw frame in sample, unless it or a newer frame is already
     // encoded
@@ -36,8 +34,6 @@ class CSICamera::frame_encoder {
     uint64_t encode_count() const;
 
    private:
-    void count_request(bool encoded);
-
     // Guards everything below it except encodes
     std::mutex mutex;
     gst_pipeline_ptr pipeline;
@@ -46,17 +42,11 @@ class CSICamera::frame_encoder {
     std::shared_ptr<const std::vector<unsigned char>> encoded_frame;
     uint64_t encoded_seq = 0;
     std::chrono::system_clock::time_point encoded_time;
-    // Requests and encodes since stats_start
-    int stats_requests = 0;
-    int stats_encodes = 0;
-    std::chrono::steady_clock::time_point stats_start;
-    std::function<void(const std::string&)> log;
 
     std::atomic<uint64_t> encodes{0};
 };
 
-CSICamera::frame_encoder::frame_encoder(const std::string& encoder_element, std::function<void(const std::string&)> log)
-    : stats_start(std::chrono::steady_clock::now()), log(std::move(log)) {
+CSICamera::FrameEncoder::FrameEncoder(const std::string& encoder_element) {
     const std::string args = std::string("appsrc name=") + ENCODE_SRC_NAME + " format=time ! " + encoder_element + " name=" + ENCODER_NAME +
                              " ! appsink name=" + ENCODE_SINK_NAME + " sync=false";
     GError* error = nullptr;
@@ -79,12 +69,11 @@ CSICamera::frame_encoder::frame_encoder(const std::string& encoder_element, std:
     }
 }
 
-CSICamera::cached_frame CSICamera::frame_encoder::encode(gst_sample_ptr sample,
-                                                         uint64_t seq,
-                                                         std::chrono::system_clock::time_point captured_at) {
+CSICamera::cached_frame CSICamera::FrameEncoder::encode(gst_sample_ptr sample,
+                                                        uint64_t seq,
+                                                        std::chrono::system_clock::time_point captured_at) {
     std::lock_guard<std::mutex> lock(mutex);
     if (encoded_frame != nullptr && encoded_seq >= seq) {
-        count_request(false);
         return cached_frame{encoded_frame, encoded_time};
     }
     if (!pipeline) {
@@ -116,7 +105,8 @@ CSICamera::cached_frame CSICamera::frame_encoder::encode(gst_sample_ptr sample,
     if (gst_app_src_push_buffer(GST_APP_SRC(src.get()), copy.release()) != GST_FLOW_OK) {
         throw Exception("failed to push the raw frame to the encoder");
     }
-    gst_sample_ptr encoded{gst_app_sink_try_pull_sample(GST_APP_SINK(sink.get()), ENCODE_TIMEOUT_MS * GST_MSECOND)};
+    gst_sample_ptr encoded{gst_app_sink_try_pull_sample(GST_APP_SINK(sink.get()),
+                                                        std::chrono::duration_cast<std::chrono::nanoseconds>(ENCODE_TIMEOUT).count())};
     if (!encoded) {
         throw Exception("timed out encoding the frame");
     }
@@ -128,11 +118,10 @@ CSICamera::cached_frame CSICamera::frame_encoder::encode(gst_sample_ptr sample,
     encoded_seq = seq;
     encoded_time = captured_at;
     encodes++;
-    count_request(true);
     return cached_frame{encoded_frame, encoded_time};
 }
 
-void CSICamera::frame_encoder::stop() {
+void CSICamera::FrameEncoder::stop() {
     std::lock_guard<std::mutex> lock(mutex);
     sink.reset();
     src.reset();
@@ -141,25 +130,8 @@ void CSICamera::frame_encoder::stop() {
     encoded_seq = 0;
 }
 
-uint64_t CSICamera::frame_encoder::encode_count() const {
+uint64_t CSICamera::FrameEncoder::encode_count() const {
     return encodes.load();
-}
-
-// Logs how many requests needed an encode, once per ENCODE_STATS_INTERVAL_S;
-// the caller holds mutex
-void CSICamera::frame_encoder::count_request(bool encoded) {
-    stats_requests++;
-    if (encoded) {
-        stats_encodes++;
-    }
-    const auto now = std::chrono::steady_clock::now();
-    if (now - stats_start >= std::chrono::seconds(ENCODE_STATS_INTERVAL_S)) {
-        log(std::to_string(stats_requests) + " requests, " + std::to_string(stats_encodes) + " encodes in the last " +
-            std::to_string(std::chrono::duration_cast<std::chrono::seconds>(now - stats_start).count()) + "s");
-        stats_requests = 0;
-        stats_encodes = 0;
-        stats_start = now;
-    }
 }
 
 CSICamera::CSICamera(const std::string name, const ProtoStruct& attrs) : Camera(std::move(name)) {
@@ -295,8 +267,7 @@ void CSICamera::init_csi(const std::string pipeline_args) {
 
     if (raw_frames) {
         try {
-            encoder = std::make_unique<frame_encoder>(get_device_params(device).output_encoder,
-                                                      [this](const std::string& line) { VIAM_RESOURCE_LOG(debug) << line; });
+            encoder = std::make_unique<FrameEncoder>(get_device_params(device).output_encoder);
         } catch (const std::exception& e) {
             fail_pipeline(e.what());
         }

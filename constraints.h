@@ -1,5 +1,6 @@
 #pragma once
 
+#include <chrono>
 #include <string>
 
 // Module
@@ -28,9 +29,7 @@ constexpr const char* ENCODER_NAME = "encoder0";
 // On-request encoding: frames are pushed into encodesrc one at a time
 constexpr const char* ENCODE_SRC_NAME = "encodesrc";
 constexpr const char* ENCODE_SINK_NAME = "encodesink";
-constexpr int ENCODE_TIMEOUT_MS = 2000;
-// How often the request and encode counts are logged (debug level)
-constexpr int ENCODE_STATS_INTERVAL_S = 60;
+constexpr std::chrono::milliseconds ENCODE_TIMEOUT{2000};
 
 // Jetson
 constexpr const char* JETSON_API_SUBTYPE = "csi";

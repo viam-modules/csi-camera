@@ -89,8 +89,8 @@ class CSICamera : public viam::sdk::Camera {
 
     // On-request encoding: owns the encode pipeline and the last encoded
     // frame; set only with raw_frames (defined in csi_camera.cpp)
-    class frame_encoder;
-    std::unique_ptr<frame_encoder> encoder;
+    class FrameEncoder;
+    std::unique_ptr<FrameEncoder> encoder;
 
     // Pipeline failure reporting
     void check_bus();
