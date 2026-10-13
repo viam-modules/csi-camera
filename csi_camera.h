@@ -94,8 +94,8 @@ class CSICamera : public viam::sdk::Camera {
 
     // On-request encoding: owns the encode pipeline and the last encoded
     // frame; set only with raw_frames (defined in csi_camera.cpp)
-    class frame_encoder;
-    std::unique_ptr<frame_encoder> encoder;
+    class FrameEncoder;
+    std::unique_ptr<FrameEncoder> encoder;
 
     // Pipeline failure reporting
     void check_bus();
@@ -143,7 +143,7 @@ class CSICamera : public viam::sdk::Camera {
 
     // The last frame served to a fresh request, which last_served_frame
     // requests get instead of a new one
-    class served_frame {
+    class ServedFrame {
        public:
         // Keeps frame unless a newer one was already served: concurrent fresh
         // requests can finish out of order
@@ -155,7 +155,7 @@ class CSICamera : public viam::sdk::Camera {
         std::mutex mutex;
         cached_frame frame;
     };
-    served_frame last_served;
+    ServedFrame last_served;
     bool wants_last_served(const viam::sdk::ProtoStruct& extra) const;
     cached_frame serve_fresh_frame();
     cached_frame get_last_served_frame();
