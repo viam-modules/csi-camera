@@ -31,6 +31,12 @@ constexpr const char* ENCODE_SRC_NAME = "encodesrc";
 constexpr const char* ENCODE_SINK_NAME = "encodesink";
 constexpr std::chrono::milliseconds ENCODE_TIMEOUT{2000};
 
+// Request extra keys: last_served_frame asks for the last frame served to a
+// fresh request; viam-server's stream server marks its live-view polling with
+// fromStreamServer
+constexpr const char* LAST_SERVED_FRAME_KEY = "last_served_frame";
+constexpr const char* FROM_STREAM_SERVER_KEY = "fromStreamServer";
+
 // Jetson
 constexpr const char* JETSON_API_SUBTYPE = "csi";
 constexpr const char* JETSON_INPUT_SOURCE = "nvarguscamerasrc";

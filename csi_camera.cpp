@@ -173,6 +173,7 @@ void CSICamera::validate_attrs(const ProtoStruct& attrs) {
     if (encode_on_request && !raw_frames) {
         VIAM_RESOURCE_LOG(warn) << "encode_on_request is only supported on a Raspberry Pi; encoding every frame on " << device.name;
     }
+    set_attr<bool>(attrs, "last_served_frame_for_stream", &CSICamera::last_served_frame_for_stream, false);
 }
 
 namespace {
@@ -186,6 +187,16 @@ template <>
 struct get_as_type<int> {
     using type = double;
 };
+
+// True when extra sets key to boolean true
+bool extra_flag(const ProtoStruct& extra, const char* key) {
+    const auto it = extra.find(key);
+    if (it == extra.end()) {
+        return false;
+    }
+    const bool* value = it->second.get<bool>();
+    return value != nullptr && *value;
+}
 
 }  // namespace
 
@@ -202,8 +213,8 @@ void CSICamera::set_attr(const ProtoStruct& attrs, const std::string& name, T CS
     }
 }
 
-Camera::image_collection CSICamera::get_images(std::vector<std::string> /* filter_source_names */, const ProtoStruct& /* extra */) {
-    auto frame = get_latest_frame();
+Camera::image_collection CSICamera::get_images(std::vector<std::string> /* filter_source_names */, const ProtoStruct& extra) {
+    auto frame = wants_last_served(extra) ? get_last_served_frame() : serve_fresh_frame();
 
     raw_image image;
     image.mime_type = DEFAULT_OUTPUT_MIMETYPE;
@@ -575,6 +586,50 @@ CSICamera::cached_frame CSICamera::get_latest_frame() {
     return encoder->encode(std::move(sample), seq, captured_at);
 }
 
+// A last_served_frame request, or viam-server's live-view polling with
+// last_served_frame_for_stream set, gets the last frame served to a fresh
+// request instead of a new one
+bool CSICamera::wants_last_served(const ProtoStruct& extra) const {
+    return extra_flag(extra, LAST_SERVED_FRAME_KEY) || (last_served_frame_for_stream && extra_flag(extra, FROM_STREAM_SERVER_KEY));
+}
+
+CSICamera::cached_frame CSICamera::serve_fresh_frame() {
+    auto frame = get_latest_frame();
+    last_served.offer(frame);
+    return frame;
+}
+
+// Returns the last frame served to a fresh request without encoding, once the
+// camera is known to still be delivering frames; serves a fresh frame if none
+// has been served yet
+CSICamera::cached_frame CSICamera::get_last_served_frame() {
+    if (pipeline == nullptr || bus == nullptr) {
+        throw Exception("GST pipeline is not running");
+    }
+    check_bus();
+    {
+        std::unique_lock<std::mutex> lock(frame_mutex);
+        wait_for_frame(lock);
+    }
+    auto frame = last_served.get();
+    if (frame.bytes == nullptr) {
+        return serve_fresh_frame();
+    }
+    return frame;
+}
+
+void CSICamera::ServedFrame::offer(const cached_frame& served) {
+    std::lock_guard<std::mutex> lock(mutex);
+    if (frame.bytes == nullptr || served.captured_at >= frame.captured_at) {
+        frame = served;
+    }
+}
+
+CSICamera::cached_frame CSICamera::ServedFrame::get() {
+    std::lock_guard<std::mutex> lock(mutex);
+    return frame;
+}
+
 // Waits for the pipeline's first frame and checks that the newest frame is
 // recent; the caller holds frame_mutex through lock
 void CSICamera::wait_for_frame(std::unique_lock<std::mutex>& lock) {
@@ -664,6 +719,10 @@ int CSICamera::get_frame_rate() const {
 
 bool CSICamera::get_encode_on_request() const {
     return encode_on_request;
+}
+
+bool CSICamera::get_last_served_frame_for_stream() const {
+    return last_served_frame_for_stream;
 }
 
 uint64_t CSICamera::get_encode_count() const {
