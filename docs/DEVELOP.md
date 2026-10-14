@@ -18,9 +18,6 @@ canon            # drops into the focal image
 ./bin/build.sh
 ```
 
-One tarball serves both Jetson and Raspberry Pi; the binary detects the board
-at runtime (`VIAM_CSI_DEVICE=jetson|pi|test` overrides the detection).
-
 ## Build and test
 
 ```bash

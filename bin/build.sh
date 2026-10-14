@@ -1,8 +1,7 @@
 #!/usr/bin/env bash
 #
 # Build and package the module as module.tar.gz. Run inside a cpp-sdk-conan
-# image: its baked `default` profile and viamconan remote are the toolchain of
-# record.
+# image.
 
 set -euxo pipefail
 
