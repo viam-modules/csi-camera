@@ -8,8 +8,6 @@ project(viam-csi
 set(CMAKE_CXX_STANDARD 17)
 
 option(VIAM_CSI_ENABLE_TESTS "Build viam-csi unit tests" OFF)
-set(VIAM_CSI_TARGET "jetson" CACHE STRING "Which meta.json to package: jetson or pi")
-set_property(CACHE VIAM_CSI_TARGET PROPERTY STRINGS jetson pi)
 
 find_package(viam-cpp-sdk CONFIG REQUIRED)
 find_package(gstreamer CONFIG REQUIRED)
@@ -29,15 +27,9 @@ if(UNIX AND NOT APPLE)
     set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -Wl,--no-as-needed")
 endif()
 
-if(VIAM_CSI_TARGET STREQUAL "pi")
-    set(VIAM_CSI_META meta-pi.json)
-else()
-    set(VIAM_CSI_META meta.json)
-endif()
-
 install(TARGETS ${PROJECT_NAME} DESTINATION .)
 install(PROGRAMS first_run.sh DESTINATION .)
-install(FILES ${VIAM_CSI_META} DESTINATION . RENAME meta.json)
+install(FILES meta.json DESTINATION .)
 
 # `cmake --build <dir> --target package` assembles module.tar.gz from the
 # install rules above.

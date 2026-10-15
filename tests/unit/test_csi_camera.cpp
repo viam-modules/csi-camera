@@ -14,6 +14,7 @@
 #include "../../utils.cpp"
 
 using namespace viam::sdk;
+using namespace csi;
 
 // One-time runtime bootstrap to initialize Viam SDK Instance and GStreamer
 static void ensure_runtime() {

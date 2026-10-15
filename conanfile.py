@@ -13,12 +13,9 @@ class ViamCsi(ConanFile):
     package_type = "application"
 
     settings = "os", "compiler", "build_type", "arch"
-    # `target` only selects which meta.json lands in module.tar.gz; the binary
-    # detects jetson vs pi at runtime.
-    options = {"with_tests": [True, False], "target": ["jetson", "pi"]}
+    options = {"with_tests": [True, False]}
     default_options = {
         "with_tests": False,
-        "target": "jetson",
         "viam-cpp-sdk/*:shared": False,
     }
 
@@ -32,7 +29,6 @@ class ViamCsi(ConanFile):
         "utils.h",
         "constraints.h",
         "meta.json",
-        "meta-pi.json",
         "first_run.sh",
         "tests/*",
     )
@@ -63,7 +59,6 @@ class ViamCsi(ConanFile):
     def generate(self):
         tc = CMakeToolchain(self)
         tc.variables["VIAM_CSI_ENABLE_TESTS"] = self.options.with_tests
-        tc.variables["VIAM_CSI_TARGET"] = str(self.options.target)
         tc.generate()
         CMakeDeps(self).generate()
 

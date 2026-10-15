@@ -4,6 +4,8 @@
 
 #include "constraints.h"
 
+namespace csi {
+
 const std::string DEVICE_PATH = "/proc/device-tree/model";
 
 struct device_type {
@@ -13,12 +15,6 @@ struct device_type {
 
     device_type() : value(unknown), name("unknown") {}  // Default constructor
     device_type(type value, std::string name) : value(value), name(name) {}
-};
-
-struct api_params {
-    std::string api_namespace;
-    std::string api_type;
-    std::string api_subtype;
 };
 
 struct device_params {
@@ -32,4 +28,5 @@ struct device_params {
 
 device_type get_device_type();
 device_params get_device_params(device_type device);
-api_params get_api_params(device_type device);
+
+}  // namespace csi

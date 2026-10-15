@@ -1,14 +1,14 @@
 {
   "module_id": "viam:csi-cam",
   "visibility": "public",
-  "url": "https://github.com/viamrobotics/csi-camera/",
-  "description": "Module for CSI camera on the Nvidia Jetson",
+  "url": "https://github.com/viam-modules/csi-camera/",
+  "description": "Module for CSI cameras on the Nvidia Jetson and Raspberry Pi",
   "models": [
     {
       "api": "rdk:component:camera",
       "model": "viam:camera:csi",
       "markdown_link": "README.md#configure-your-csi-camera",
-      "short_description" :"A module for the CSI camera on the Nvidia Jetson"
+      "short_description": "CSI camera on the Nvidia Jetson or Raspberry Pi"
     }
   ],
   "entrypoint": "viam-csi",

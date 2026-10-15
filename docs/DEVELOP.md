@@ -15,13 +15,14 @@ canon            # drops into the focal image
 ## Build the module tarball
 
 ```bash
-TARGET=jetson ./bin/build.sh   # or TARGET=pi; picks which meta.json is packaged
+./bin/build.sh
 ```
 
 ## Build and test
 
 ```bash
 make test                      # conan install with tests, cmake presets, ctest
+DEVICE=pi make test            # emulate a Pi instead of a Jetson
 ```
 
 Tests run in `VIAM_CSI_TEST_MODE=1`, which swaps the camera source for
@@ -31,7 +32,7 @@ Tests run in `VIAM_CSI_TEST_MODE=1`, which swaps the camera source for
 ## Integration tests
 
 ```bash
-TARGET=pi ./bin/build.sh
+./bin/build.sh
 mkdir -p module && tar xzf module.tar.gz -C module
 cd tests/integration && VIAM_CSI_DEVICE=pi VIAM_CSI_TEST_MODE=1 go test -v
 ```
