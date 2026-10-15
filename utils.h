@@ -17,12 +17,6 @@ struct device_type {
     device_type(type value, std::string name) : value(value), name(name) {}
 };
 
-struct api_params {
-    std::string api_namespace;
-    std::string api_type;
-    std::string api_subtype;
-};
-
 struct device_params {
     std::string input_source;
     std::string input_format;
@@ -34,6 +28,5 @@ struct device_params {
 
 device_type get_device_type();
 device_params get_device_params(device_type device);
-api_params get_api_params(device_type device);
 
 }  // namespace csi

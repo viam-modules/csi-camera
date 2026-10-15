@@ -1,10 +1,11 @@
-TARGET ?= jetson # [jetson,pi]
+# Device the unit tests emulate: jetson or pi.
+DEVICE ?= jetson
 
 .PHONY: build test lint clean waveshare arducam restart-argus
 
-# Builds module.tar.gz for TARGET.
+# Builds module.tar.gz.
 build:
-	TARGET=$(TARGET) ./bin/build.sh
+	./bin/build.sh
 
 # Builds and runs unit tests.
 test:
@@ -12,7 +13,7 @@ test:
 	conan install . -o "&:with_tests=True" --build=missing -c tools.system.package_manager:mode=install
 	cmake --preset conan-release
 	cmake --build --preset conan-release
-	VIAM_CSI_DEVICE=$(TARGET) VIAM_CSI_TEST_MODE=1 ctest --test-dir build/Release --output-on-failure
+	VIAM_CSI_DEVICE=$(DEVICE) VIAM_CSI_TEST_MODE=1 ctest --test-dir build/Release --output-on-failure
 
 lint:
 	./bin/lint.sh

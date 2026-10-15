@@ -10,7 +10,7 @@ constexpr const char* DEFAULT_SOCKET_PATH = "/tmp/viam.csi.sock";
 constexpr const char* RESOURCE_TYPE = "CSICamera";
 constexpr const char* API_NAMESPACE = "viam";
 constexpr const char* API_TYPE = "camera";
-constexpr const char* DEFAULT_API_SUBTYPE = "csi";
+constexpr const char* API_SUBTYPE = "csi";
 
 // GST
 constexpr int GST_GET_STATE_TIMEOUT = 1;
@@ -40,14 +40,12 @@ constexpr const char* LAST_SERVED_FRAME_KEY = "last_served_frame";
 constexpr const char* FROM_STREAM_SERVER_KEY = "fromStreamServer";
 
 // Jetson
-constexpr const char* JETSON_API_SUBTYPE = "csi";
 constexpr const char* JETSON_INPUT_SOURCE = "nvarguscamerasrc";
 constexpr const char* JETSON_INPUT_FORMAT = "video/x-raw(memory:NVMM)";
 constexpr const char* JETSON_VIDEO_CONVERTER = "nvvidconv";
 constexpr const char* JETSON_OUTPUT_ENCODER = "nvjpegenc";
 
 // Pi
-constexpr const char* PI_API_SUBTYPE = "csi-pi";
 constexpr const char* PI_INPUT_SOURCE = "libcamerasrc";
 constexpr const char* PI_INPUT_FORMAT = "video/x-raw,format=I420";
 constexpr const char* PI_VIDEO_CONVERTER = "videoconvert";
