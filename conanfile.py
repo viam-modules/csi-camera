@@ -45,7 +45,7 @@ class ViamCsi(ConanFile):
         check_min_cppstd(self, 17)
 
     def requirements(self):
-        self.requires("viam-cpp-sdk/0.42.0")
+        self.requires("viam-cpp-sdk/0.43.0")
         # Host gstreamer; recipe lives in etc/conan/gstreamer (see bin/build.sh).
         self.requires("gstreamer/system")
 
