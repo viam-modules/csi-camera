@@ -19,7 +19,7 @@ struct sensor_mode {
 };
 
 // Enumerates the sensor modes available on a device. The concrete backend is
-// platform-specific (libcamera on pi, V4L2 on jetson) and selected at build
+// platform-specific (V4L2 sensor subdevs on pi, V4L2 capture nodes on jetson) and selected at build
 // time, so this interface is the seam the native query lives behind.
 struct mode_enumerator {
     virtual ~mode_enumerator() = default;
@@ -32,11 +32,13 @@ struct mode_enumerator {
 std::vector<viam::sdk::ResourceConfig> build_configs(const std::vector<sensor_mode>& modes, device_type device);
 
 // Returns the enumerator backend for a device, or nullptr if none is available.
+// The pi backend probes the sensor on construction, so build it before any
+// camera starts streaming and share it between discovery resources.
 std::unique_ptr<mode_enumerator> make_enumerator(device_type device);
 
 class CSIDiscovery : public viam::sdk::Discovery {
    public:
-    CSIDiscovery(std::string name, device_type device, std::unique_ptr<mode_enumerator> enumerator);
+    CSIDiscovery(std::string name, device_type device, std::shared_ptr<mode_enumerator> enumerator);
 
     std::vector<viam::sdk::ResourceConfig> discover_resources(const viam::sdk::ProtoStruct& extra) override;
     viam::sdk::ProtoStruct do_command(const viam::sdk::ProtoStruct& command) override;
@@ -44,5 +46,5 @@ class CSIDiscovery : public viam::sdk::Discovery {
 
    private:
     device_type device_;
-    std::unique_ptr<mode_enumerator> enumerator_;
+    std::shared_ptr<mode_enumerator> enumerator_;
 };
