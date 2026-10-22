@@ -76,7 +76,15 @@ TEST(CSIDiscovery, StubEnumeratorForTestDevice) {
 
 TEST(CSIDiscovery, NullEnumeratorYieldsNoConfigs) {
     ensure_runtime();
-    // pi/jetson native backends are not implemented yet -> null enumerator.
+    // pi native backend is not implemented yet -> null enumerator.
     CSIDiscovery svc("disco", pi_device(), make_enumerator(pi_device()));
     EXPECT_TRUE(svc.discover_resources({}).empty());
+}
+
+TEST(CSIDiscovery, JetsonHasNativeEnumerator) {
+    ensure_runtime();
+    auto enumerator = make_enumerator(device_type(device_type::jetson, "jetson"));
+    ASSERT_NE(enumerator, nullptr);
+    // Off-device there are no tegra-video nodes; this checks the scan is safe.
+    EXPECT_NO_THROW(enumerator->enumerate());
 }

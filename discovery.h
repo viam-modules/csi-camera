@@ -19,7 +19,7 @@ struct sensor_mode {
 };
 
 // Enumerates the sensor modes available on a device. The concrete backend is
-// platform-specific (libcamera on pi, Argus on jetson) and selected at build
+// platform-specific (libcamera on pi, V4L2 on jetson) and selected at build
 // time, so this interface is the seam the native query lives behind.
 struct mode_enumerator {
     virtual ~mode_enumerator() = default;
