@@ -5,10 +5,12 @@
 // `rpicam-hello --list-cameras` shows), not the thousands of ISP scale targets
 // the libcamerasrc gstreamer caps advertise.
 //
-// UNVERIFIED: not yet built or run against real hardware. frame_rate per mode is
-// still TODO (see below), so emitted configs currently omit it.
+// UNVERIFIED: not yet built or run against real hardware.
 
 #include <libcamera/libcamera.h>
+
+#include <cmath>
+#include <cstdint>
 
 #include <viam/sdk/log/logging.hpp>
 
@@ -17,6 +19,37 @@
 namespace csi {
 
 namespace {
+
+// Max fps a mode supports = 1e6 / shortest frame duration. libcamera reports
+// FrameDurationLimits per the *configured* mode, so the camera must be acquired
+// and configured to this size first. Returns 0 (unknown) if anything fails.
+int max_fps_for_mode(const std::shared_ptr<libcamera::Camera>& camera,
+                     libcamera::CameraConfiguration* config,
+                     libcamera::StreamConfiguration& stream,
+                     const libcamera::PixelFormat& pixelformat,
+                     const libcamera::Size& size) {
+    stream.pixelFormat = pixelformat;
+    stream.size = size;
+    if (config->validate() == libcamera::CameraConfiguration::Invalid) {
+        return 0;
+    }
+    if (camera->configure(config) != 0) {
+        return 0;
+    }
+
+    const libcamera::ControlInfoMap& controls = camera->controls();
+    const auto it = controls.find(&libcamera::controls::FrameDurationLimits);
+    if (it == controls.end()) {
+        return 0;
+    }
+    // FrameDurationLimits is in microseconds; the minimum duration is the
+    // fastest frame, hence the highest fps.
+    const std::int64_t min_duration_us = it->second.min().get<std::int64_t>();
+    if (min_duration_us <= 0) {
+        return 0;
+    }
+    return static_cast<int>(std::llround(1e6 / static_cast<double>(min_duration_us)));
+}
 
 class libcamera_enumerator : public mode_enumerator {
    public:
@@ -36,19 +69,28 @@ class libcamera_enumerator : public mode_enumerator {
                 continue;
             }
 
-            const libcamera::StreamFormats& formats = config->at(0).formats();
-            for (const auto& pixelformat : formats.pixelformats()) {
-                for (const auto& size : formats.sizes(pixelformat)) {
+            // Reading per-mode fps needs the camera acquired (to configure it).
+            // If it's busy, still report the modes, just without fps.
+            const bool acquired = camera->acquire() == 0;
+            if (!acquired) {
+                VIAM_SDK_LOG(warn) << "could not acquire camera " << camera->id() << "; reporting modes without fps";
+            }
+
+            libcamera::StreamConfiguration& stream = config->at(0);
+            for (const auto& pixelformat : stream.formats().pixelformats()) {
+                for (const auto& size : stream.formats().sizes(pixelformat)) {
                     sensor_mode m;
                     m.sensor_id = camera->id();
                     m.width_px = static_cast<int>(size.width);
                     m.height_px = static_cast<int>(size.height);
-                    // TODO(RSDK-12030): derive per-mode fps from
-                    // controls::FrameDurationLimits; 0 => config omits frame_rate.
-                    m.frame_rate = 0;
                     m.format = pixelformat.toString();
+                    m.frame_rate = acquired ? max_fps_for_mode(camera, config.get(), stream, pixelformat, size) : 0;
                     modes.push_back(m);
                 }
+            }
+
+            if (acquired) {
+                camera->release();
             }
         }
 
