@@ -39,11 +39,15 @@ int main(int argc, char* argv[]) try {
             return std::make_shared<csi::CSICamera>(resource_config.name(), resource_config.attributes());
         });
 
+    // Built before serving so the pi backend probes its sensor before any camera
+    // is streaming; shared by every discovery resource.
+    std::shared_ptr<mode_enumerator> enumerator = make_enumerator(device);
+
     auto discovery_registration = std::make_shared<ModelRegistration>(
         API::get<Discovery>(),
         Model{API_NAMESPACE, API_TYPE, DISCOVERY_API_SUBTYPE},
-        [device](Dependencies, ResourceConfig resource_config) -> std::shared_ptr<Resource> {
-            return std::make_shared<CSIDiscovery>(resource_config.name(), device, make_enumerator(device));
+        [device, enumerator](Dependencies, ResourceConfig resource_config) -> std::shared_ptr<Resource> {
+            return std::make_shared<CSIDiscovery>(resource_config.name(), device, enumerator);
         });
 
     std::vector<std::shared_ptr<ModelRegistration>> mrs = {module_registration, discovery_registration};
