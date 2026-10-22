@@ -11,6 +11,7 @@ constexpr const char* RESOURCE_TYPE = "CSICamera";
 constexpr const char* API_NAMESPACE = "viam";
 constexpr const char* API_TYPE = "camera";
 constexpr const char* API_SUBTYPE = "csi";
+constexpr const char* DISCOVERY_API_SUBTYPE = "csi-discovery";
 
 // GST
 constexpr int GST_GET_STATE_TIMEOUT = 1;
