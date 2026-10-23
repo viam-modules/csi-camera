@@ -24,6 +24,8 @@
 
 using namespace viam::sdk;
 
+namespace csi {
+
 namespace {
 
 // Upper bound on the /dev/videoN nodes scanned for CSI sensors.
@@ -350,9 +352,8 @@ std::string mode_name(const sensor_mode& m) {
 
 }  // namespace
 
-std::vector<ResourceConfig> build_configs(const std::vector<sensor_mode>& modes, device_type device) {
-    const api_params api = get_api_params(device);
-    const Model model{api.api_namespace, api.api_type, api.api_subtype};
+std::vector<ResourceConfig> build_configs(const std::vector<sensor_mode>& modes) {
+    const Model model{API_NAMESPACE, API_TYPE, API_SUBTYPE};
 
     std::vector<ResourceConfig> configs;
     std::unordered_set<std::string> used_names;
@@ -390,14 +391,14 @@ std::unique_ptr<mode_enumerator> make_enumerator(device_type device) {
     }
 }
 
-CSIDiscovery::CSIDiscovery(std::string name, device_type device, std::shared_ptr<mode_enumerator> enumerator)
-    : Discovery(std::move(name)), device_(device), enumerator_(std::move(enumerator)) {}
+CSIDiscovery::CSIDiscovery(std::string name, std::shared_ptr<mode_enumerator> enumerator)
+    : Discovery(std::move(name)), enumerator_(std::move(enumerator)) {}
 
 std::vector<ResourceConfig> CSIDiscovery::discover_resources(const ProtoStruct&) {
     if (enumerator_ == nullptr) {
         return {};
     }
-    return build_configs(enumerator_->enumerate(), device_);
+    return build_configs(enumerator_->enumerate());
 }
 
 ProtoStruct CSIDiscovery::do_command(const ProtoStruct&) {
@@ -408,3 +409,5 @@ ProtoStruct CSIDiscovery::do_command(const ProtoStruct&) {
 ProtoStruct CSIDiscovery::get_status() {
     return ProtoStruct{};
 }
+
+}  // namespace csi
