@@ -13,11 +13,10 @@ namespace csi {
 
 // A single discrete capture mode a CSI sensor supports.
 struct sensor_mode {
-    std::string sensor_id;  // maps to the camera's video_path attribute
+    std::string sensor_id;  // the camera's video_path; empty where it does not apply (pi)
     int width_px = 0;
     int height_px = 0;
-    int frame_rate = 0;
-    std::string format;  // optional; empty when the backend does not report one
+    int frame_rate = 0;  // highest rate the mode can always deliver
 };
 
 // Enumerates the sensor modes available on a device. The concrete backend is
@@ -29,14 +28,15 @@ struct mode_enumerator {
     virtual std::vector<sensor_mode> enumerate() = 0;
 };
 
-// Build one camera ResourceConfig per sensor mode. Pure (no hardware access) so
-// it is unit-tested directly. Each config is paste-ready and carries the camera
-// model, so a discovered config is a known-good resolution.
+// Build one camera ResourceConfig per sensor mode with a known frame rate. Pure
+// (no hardware access) so it is unit-tested directly. Each config is
+// paste-ready and carries the camera model, so a discovered config is a
+// known-good resolution.
 std::vector<viam::sdk::ResourceConfig> build_configs(const std::vector<sensor_mode>& modes);
 
 // Returns the enumerator backend for a device, or nullptr if none is available.
-// The pi backend probes the sensor on construction, so build it before any
-// camera starts streaming and share it between discovery resources.
+// The pi backend probes the sensor once, on construction, so build it before
+// any camera starts streaming and share it between discovery resources.
 std::unique_ptr<mode_enumerator> make_enumerator(device_type device);
 
 class CSIDiscovery : public viam::sdk::Discovery {
