@@ -12,8 +12,7 @@ constexpr const char* API_NAMESPACE = "viam";
 constexpr const char* API_TYPE = "camera";
 constexpr const char* API_SUBTYPE = "csi";
 
-// Discovery service model name, shared across platforms (unlike the camera
-// subtype, which differs between jetson and pi).
+// Discovery service model subtype (viam:camera:csi-discovery)
 constexpr const char* DISCOVERY_API_SUBTYPE = "csi-discovery";
 
 // GST

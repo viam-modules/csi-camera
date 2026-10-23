@@ -9,6 +9,7 @@
 #include "../../utils.cpp"
 
 using namespace viam::sdk;
+using namespace csi;
 
 static void ensure_runtime() {
     static Instance inst;
@@ -25,20 +26,20 @@ TEST(CSIDiscovery, BuildConfigsOnePerMode) {
         {"0", 1280, 720, 60, "NV12"},
     };
 
-    const auto configs = build_configs(modes, pi_device());
+    const auto configs = build_configs(modes);
 
     ASSERT_EQ(configs.size(), 2u);
     EXPECT_EQ(configs[0].type(), "camera");
     EXPECT_EQ(configs[0].api().to_string(), "rdk:component:camera");
-    // Model subtype must track the platform camera model (pi -> csi-pi).
-    EXPECT_EQ(configs[0].model().to_string(), std::string(API_NAMESPACE) + ":" + API_TYPE + ":" + PI_API_SUBTYPE);
+    // Discovered configs must use the module's (unified) camera model.
+    EXPECT_EQ(configs[0].model().to_string(), std::string(API_NAMESPACE) + ":" + API_TYPE + ":" + API_SUBTYPE);
 }
 
 TEST(CSIDiscovery, AttributesArePasteReady) {
     ensure_runtime();
     std::vector<sensor_mode> modes = {{"1", 640, 480, 30, "NV12"}};
 
-    const auto configs = build_configs(modes, pi_device());
+    const auto configs = build_configs(modes);
 
     ASSERT_EQ(configs.size(), 1u);
     const auto& attrs = configs[0].attributes();
@@ -56,7 +57,7 @@ TEST(CSIDiscovery, NamesAreUnique) {
         {"0", 1920, 1080, 30, "YUYV"},
     };
 
-    const auto configs = build_configs(modes, pi_device());
+    const auto configs = build_configs(modes);
 
     ASSERT_EQ(configs.size(), 2u);
     std::unordered_set<std::string> names{configs[0].name(), configs[1].name()};
@@ -65,19 +66,19 @@ TEST(CSIDiscovery, NamesAreUnique) {
 
 TEST(CSIDiscovery, EmptyModesEmptyConfigs) {
     ensure_runtime();
-    EXPECT_TRUE(build_configs({}, pi_device()).empty());
+    EXPECT_TRUE(build_configs({}).empty());
 }
 
 TEST(CSIDiscovery, StubEnumeratorForTestDevice) {
     ensure_runtime();
-    CSIDiscovery svc("disco", device_type(device_type::test, "test"), make_enumerator(device_type(device_type::test, "test")));
+    CSIDiscovery svc("disco", make_enumerator(device_type(device_type::test, "test")));
     EXPECT_FALSE(svc.discover_resources({}).empty());
 }
 
 TEST(CSIDiscovery, NullEnumeratorYieldsNoConfigs) {
     ensure_runtime();
     // Unknown devices have no backend -> null enumerator.
-    CSIDiscovery svc("disco", device_type(), make_enumerator(device_type()));
+    CSIDiscovery svc("disco", make_enumerator(device_type()));
     EXPECT_TRUE(svc.discover_resources({}).empty());
 }
 
