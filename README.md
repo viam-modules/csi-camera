@@ -97,6 +97,22 @@ viam-server's stream server marks its live-view polling with `{"fromStreamServer
 }
 ```
 
+### Configure CSI camera discovery
+
+Add a `discovery` service with the `viam:camera:csi-discovery` model (no attributes). Its `DiscoverResources` returns one ready-to-use `viam:camera:csi` config per sensor mode, at the highest frame rate the mode can deliver, for example:
+
+```json
+{
+  "name": "csi-0-1280x720-60fps",
+  "api": "rdk:component:camera",
+  "model": "viam:camera:csi",
+  "attributes": { "width_px": 1280, "height_px": 720, "frame_rate": 60, "video_path": "0" }
+}
+```
+
+- Jetson: every CSI sensor is listed, with `video_path` set to its sensor id.
+- Raspberry Pi: the first camera's modes are listed, without `video_path`. They are read once when the module starts; if another program is using the camera then, restart the module once it is free.
+
 ### Migrating from `csi-cam-pi`
 
 The separate `csi-cam-pi` module is no longer published. In your robot config, change the module's `module_id` from `viam:csi-cam-pi` to `viam:csi-cam` and the component's `model` from `viam:camera:csi-pi` to `viam:camera:csi`. Attributes are unchanged.
