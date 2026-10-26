@@ -75,9 +75,7 @@ std::unique_ptr<mode_enumerator> make_enumerator(device_type device) {
         case device_type::pi:
             return make_rpicam_enumerator();
         case device_type::jetson:
-            // TODO(RSDK-12030): Argus backend (CameraProvider::getAllSensorModes).
-            VIAM_SDK_LOG(warn) << "Argus discovery backend not yet implemented; returning no resolutions";
-            return nullptr;
+            return make_v4l2_enumerator();
         default:
             return nullptr;
     }

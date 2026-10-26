@@ -107,6 +107,37 @@ TEST(CSIDiscovery, ParsesNoCameras) {
     EXPECT_TRUE(csi::parse_rpicam_list("").empty());
 }
 
+// Real v4l2-ctl --list-formats-ext shape: a format token, then discrete sizes,
+// each with one or more intervals (fps).
+static const char* kV4l2Output =
+    "ioctl: VIDIOC_ENUM_FMT\n"
+    "\tType: Video Capture\n"
+    "\n"
+    "\t[0]: 'RG10' (10-bit Bayer RGRG/GBGB)\n"
+    "\t\tSize: Discrete 3280x2464\n"
+    "\t\t\tInterval: Discrete 0.048s (21.000 fps)\n"
+    "\t\tSize: Discrete 1920x1080\n"
+    "\t\t\tInterval: Discrete 0.017s (59.999 fps)\n"
+    "\t\t\tInterval: Discrete 0.033s (29.999 fps)\n";
+
+TEST(CSIDiscovery, ParsesV4l2Formats) {
+    const auto modes = csi::parse_v4l2_formats(kV4l2Output, "0");
+
+    ASSERT_EQ(modes.size(), 2u);
+    EXPECT_EQ(modes[0].sensor_id, "0");
+    EXPECT_EQ(modes[0].width_px, 3280);
+    EXPECT_EQ(modes[0].height_px, 2464);
+    EXPECT_EQ(modes[0].frame_rate, 21);
+    EXPECT_EQ(modes[0].format, "RG10");
+    // 1920x1080 lists two intervals; the faster (60) wins.
+    EXPECT_EQ(modes[1].width_px, 1920);
+    EXPECT_EQ(modes[1].frame_rate, 60);
+}
+
+TEST(CSIDiscovery, ParsesV4l2Empty) {
+    EXPECT_TRUE(csi::parse_v4l2_formats("", "0").empty());
+}
+
 TEST(CSIDiscovery, StubEnumeratorForTestDevice) {
     ensure_runtime();
     const csi::device_type test_dev(csi::device_type::test, "test");
@@ -116,8 +147,8 @@ TEST(CSIDiscovery, StubEnumeratorForTestDevice) {
 
 TEST(CSIDiscovery, NullEnumeratorYieldsNoConfigs) {
     ensure_runtime();
-    // jetson native backend not implemented yet -> null enumerator -> no configs.
-    const csi::device_type jetson_dev(csi::device_type::jetson, "jetson");
-    csi::CSIDiscovery svc("disco", csi::make_enumerator(jetson_dev));
+    // An unknown device has no backend -> null enumerator -> no configs.
+    const csi::device_type unknown_dev(csi::device_type::unknown, "unknown");
+    csi::CSIDiscovery svc("disco", csi::make_enumerator(unknown_dev));
     EXPECT_TRUE(svc.discover_resources({}).empty());
 }

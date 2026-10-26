@@ -31,6 +31,7 @@ class ViamCsi(ConanFile):
         "discovery.cpp",
         "discovery.h",
         "discovery_rpicam.cpp",
+        "discovery_v4l2.cpp",
         "meta.json",
         "first_run.sh",
         "tests/*",

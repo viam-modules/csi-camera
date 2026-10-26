@@ -14,7 +14,7 @@ find_package(gstreamer CONFIG REQUIRED)
 
 # discovery_rpicam.cpp shells out to rpicam-hello at runtime, so the Pi backend
 # needs no build-time libcamera (focal has none) and no extra linking.
-add_executable(${PROJECT_NAME} main.cpp csi_camera.cpp utils.cpp discovery.cpp discovery_rpicam.cpp)
+add_executable(${PROJECT_NAME} main.cpp csi_camera.cpp utils.cpp discovery.cpp discovery_rpicam.cpp discovery_v4l2.cpp)
 
 target_link_libraries(${PROJECT_NAME}
         gstreamer::gstreamer
@@ -58,7 +58,7 @@ if(VIAM_CSI_ENABLE_TESTS)
 
     # Separate exe: tests include the .cpp under test, so each lives in its own
     # binary to avoid duplicate symbols across translation units.
-    add_executable(${PROJECT_NAME}_discovery_test tests/unit/test_discovery.cpp discovery_rpicam.cpp)
+    add_executable(${PROJECT_NAME}_discovery_test tests/unit/test_discovery.cpp discovery_rpicam.cpp discovery_v4l2.cpp)
 
     target_link_libraries(${PROJECT_NAME}_discovery_test
             gstreamer::gstreamer
