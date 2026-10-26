@@ -39,11 +39,12 @@ std::string v4l2_fourcc_to_string(std::uint32_t fourcc) {
 
 int v4l2_interval_to_fps(std::uint32_t numerator, std::uint32_t denominator) {
     // A V4L2 frame interval is seconds-per-frame (numerator/denominator), so fps
-    // is its reciprocal.
+    // is its reciprocal. Floor, not round: never advertise above the achievable
+    // rate (epsilon guards float error so an exact 30 doesn't floor to 29).
     if (numerator == 0) {
         return 0;
     }
-    return static_cast<int>(std::lround(static_cast<double>(denominator) / static_cast<double>(numerator)));
+    return static_cast<int>(std::floor(static_cast<double>(denominator) / static_cast<double>(numerator) + 1e-3));
 }
 
 namespace {

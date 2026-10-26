@@ -95,11 +95,11 @@ TEST(CSIDiscovery, ParsesRpicamModes) {
     EXPECT_EQ(modes[0].sensor_id, "0");
     EXPECT_EQ(modes[0].width_px, 640);
     EXPECT_EQ(modes[0].height_px, 480);
-    EXPECT_EQ(modes[0].frame_rate, 63);  // 62.50 rounded
+    EXPECT_EQ(modes[0].frame_rate, 62);  // 62.50 floored (never advertise above max)
     EXPECT_EQ(modes[0].format, "SGBRG10_CSI2P");
     // Format persists onto a continuation line.
     EXPECT_EQ(modes[3].width_px, 2592);
-    EXPECT_EQ(modes[3].frame_rate, 16);  // 15.63 rounded
+    EXPECT_EQ(modes[3].frame_rate, 15);  // 15.63 floored
     EXPECT_EQ(modes[3].format, "SGBRG10_CSI2P");
 }
 
@@ -117,7 +117,7 @@ TEST(CSIDiscovery, V4l2FourccToString) {
 TEST(CSIDiscovery, V4l2IntervalToFps) {
     // Interval is seconds-per-frame; fps is its reciprocal, rounded.
     EXPECT_EQ(csi::v4l2_interval_to_fps(1, 30), 30);
-    EXPECT_EQ(csi::v4l2_interval_to_fps(1001, 30000), 30);  // 29.97 -> 30
+    EXPECT_EQ(csi::v4l2_interval_to_fps(1001, 30000), 29);  // 29.97 floored
     EXPECT_EQ(csi::v4l2_interval_to_fps(0, 30), 0);         // zero numerator guarded
 }
 

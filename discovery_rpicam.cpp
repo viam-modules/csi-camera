@@ -65,7 +65,10 @@ std::vector<sensor_mode> parse_rpicam_list(const std::string& output) {
             sm.sensor_id = sensor_id;
             sm.width_px = std::stoi(m[1].str());
             sm.height_px = std::stoi(m[2].str());
-            sm.frame_rate = static_cast<int>(std::lround(std::stod(m[3].str())));
+            // Floor, not round: advertising above the sensor's real max makes the
+            // camera request an unachievable rate and the pipeline stalls. The
+            // epsilon guards float error so an exact 30.00 doesn't floor to 29.
+            sm.frame_rate = static_cast<int>(std::floor(std::stod(m[3].str()) + 1e-3));
             sm.format = current_format;
             modes.push_back(sm);
         }
