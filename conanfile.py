@@ -30,7 +30,7 @@ class ViamCsi(ConanFile):
         "constraints.h",
         "discovery.cpp",
         "discovery.h",
-        "discovery_libcamera.cpp",
+        "discovery_rpicam.cpp",
         "meta.json",
         "first_run.sh",
         "tests/*",

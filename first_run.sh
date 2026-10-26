@@ -14,7 +14,8 @@ case "$model" in
     *) echo "Not a Raspberry Pi; nothing to install."; exit 0 ;;
 esac
 
-PKGS=(libgstreamer1.0-0 gstreamer1.0-plugins-base gstreamer1.0-plugins-good gstreamer1.0-libcamera)
+# rpicam-apps provides rpicam-hello, which the discovery service shells out to.
+PKGS=(libgstreamer1.0-0 gstreamer1.0-plugins-base gstreamer1.0-plugins-good gstreamer1.0-libcamera rpicam-apps)
 MANUAL="sudo apt-get install -y ${PKGS[*]}"
 
 SUDO=""

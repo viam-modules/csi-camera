@@ -12,28 +12,14 @@ option(VIAM_CSI_ENABLE_TESTS "Build viam-csi unit tests" OFF)
 find_package(viam-cpp-sdk CONFIG REQUIRED)
 find_package(gstreamer CONFIG REQUIRED)
 
-# Native libcamera discovery backend (Pi). Off by default so the standard build
-# and CI need no libcamera; enable on a Pi build once it's hardware-validated.
-option(VIAM_CSI_WITH_LIBCAMERA "Build the libcamera discovery backend (Pi)" OFF)
-
-set(VIAM_CSI_SOURCES main.cpp csi_camera.cpp utils.cpp discovery.cpp)
-if(VIAM_CSI_WITH_LIBCAMERA)
-    list(APPEND VIAM_CSI_SOURCES discovery_libcamera.cpp)
-endif()
-
-add_executable(${PROJECT_NAME} ${VIAM_CSI_SOURCES})
+# discovery_rpicam.cpp shells out to rpicam-hello at runtime, so the Pi backend
+# needs no build-time libcamera (focal has none) and no extra linking.
+add_executable(${PROJECT_NAME} main.cpp csi_camera.cpp utils.cpp discovery.cpp discovery_rpicam.cpp)
 
 target_link_libraries(${PROJECT_NAME}
         gstreamer::gstreamer
         viam-cpp-sdk::viamsdk
 )
-
-if(VIAM_CSI_WITH_LIBCAMERA)
-    find_package(PkgConfig REQUIRED)
-    pkg_check_modules(LIBCAMERA REQUIRED IMPORTED_TARGET libcamera)
-    target_link_libraries(${PROJECT_NAME} PkgConfig::LIBCAMERA)
-    target_compile_definitions(${PROJECT_NAME} PRIVATE VIAM_CSI_WITH_LIBCAMERA)
-endif()
 
 # glibc < 2.34 (focal) keeps POSIX AIO symbols in librt; newer glibc merges them
 # into libc. The SDK's Conan package places libviam_rust_utils.a last in link
@@ -72,7 +58,7 @@ if(VIAM_CSI_ENABLE_TESTS)
 
     # Separate exe: tests include the .cpp under test, so each lives in its own
     # binary to avoid duplicate symbols across translation units.
-    add_executable(${PROJECT_NAME}_discovery_test tests/unit/test_discovery.cpp)
+    add_executable(${PROJECT_NAME}_discovery_test tests/unit/test_discovery.cpp discovery_rpicam.cpp)
 
     target_link_libraries(${PROJECT_NAME}_discovery_test
             gstreamer::gstreamer

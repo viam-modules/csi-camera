@@ -73,12 +73,7 @@ std::unique_ptr<mode_enumerator> make_enumerator(device_type device) {
         case device_type::test:
             return std::make_unique<stub_enumerator>();
         case device_type::pi:
-#ifdef VIAM_CSI_WITH_LIBCAMERA
-            return make_libcamera_enumerator();
-#else
-            VIAM_SDK_LOG(warn) << "libcamera discovery backend not compiled in; returning no resolutions";
-            return nullptr;
-#endif
+            return make_rpicam_enumerator();
         case device_type::jetson:
             // TODO(RSDK-12030): Argus backend (CameraProvider::getAllSensorModes).
             VIAM_SDK_LOG(warn) << "Argus discovery backend not yet implemented; returning no resolutions";

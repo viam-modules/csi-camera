@@ -22,7 +22,7 @@ struct sensor_mode {
 };
 
 // Enumerates a device's supported sensor modes. The concrete backend is
-// platform-native (libcamera on pi, Argus on jetson) and the seam the native
+// platform-specific (rpicam-hello on pi, Argus on jetson) and the seam the native
 // query sits behind.
 struct mode_enumerator {
     virtual ~mode_enumerator() = default;
@@ -37,8 +37,12 @@ std::vector<viam::sdk::ResourceConfig> build_configs(const std::vector<sensor_mo
 // Backend for a device, or nullptr if none is available for it.
 std::unique_ptr<mode_enumerator> make_enumerator(device_type device);
 
-// Defined in discovery_libcamera.cpp, compiled only with VIAM_CSI_WITH_LIBCAMERA.
-std::unique_ptr<mode_enumerator> make_libcamera_enumerator();
+// Parse `rpicam-hello --list-cameras` output into modes. Pure, so unit-tested
+// directly; defined in discovery_rpicam.cpp.
+std::vector<sensor_mode> parse_rpicam_list(const std::string& output);
+
+// Pi backend: shells out to rpicam-hello. Defined in discovery_rpicam.cpp.
+std::unique_ptr<mode_enumerator> make_rpicam_enumerator();
 
 class CSIDiscovery : public viam::sdk::Discovery {
    public:

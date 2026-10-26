@@ -75,6 +75,38 @@ TEST(CSIDiscovery, EmptyModesEmptyConfigs) {
     EXPECT_TRUE(csi::build_configs({}).empty());
 }
 
+// Real rpicam-hello --list-cameras shape: a header line, then mode lines whose
+// format token carries across continuation lines, each with a trailing crop.
+static const char* kRpicamOutput =
+    "Available cameras\n"
+    "-----------------\n"
+    "0 : ov5647 [2592x1944 10-bit RGGB] (/base/axi/pcie@1000120000/rp1/i2c@88000/ov5647@36)\n"
+    "    Modes: 'SRGGB10_CSI2P' : 640x480 [58.92 fps - (16, 0)/2560x1920 crop]\n"
+    "                             1296x972 [43.25 fps - (0, 0)/2592x1944 crop]\n"
+    "                             1920x1080 [30.62 fps - (348, 434)/1928x1080 crop]\n"
+    "                             2592x1944 [15.63 fps - (0, 0)/2592x1944 crop]\n";
+
+TEST(CSIDiscovery, ParsesRpicamModes) {
+    const auto modes = csi::parse_rpicam_list(kRpicamOutput);
+
+    // Four real modes; the header's resolution and the crop sizes are not modes.
+    ASSERT_EQ(modes.size(), 4u);
+    EXPECT_EQ(modes[0].sensor_id, "0");
+    EXPECT_EQ(modes[0].width_px, 640);
+    EXPECT_EQ(modes[0].height_px, 480);
+    EXPECT_EQ(modes[0].frame_rate, 59);  // 58.92 rounded
+    EXPECT_EQ(modes[0].format, "SRGGB10_CSI2P");
+    // Format persists onto a continuation line.
+    EXPECT_EQ(modes[3].width_px, 2592);
+    EXPECT_EQ(modes[3].frame_rate, 16);  // 15.63 rounded
+    EXPECT_EQ(modes[3].format, "SRGGB10_CSI2P");
+}
+
+TEST(CSIDiscovery, ParsesNoCameras) {
+    EXPECT_TRUE(csi::parse_rpicam_list("No cameras available!\n").empty());
+    EXPECT_TRUE(csi::parse_rpicam_list("").empty());
+}
+
 TEST(CSIDiscovery, StubEnumeratorForTestDevice) {
     ensure_runtime();
     const csi::device_type test_dev(csi::device_type::test, "test");
