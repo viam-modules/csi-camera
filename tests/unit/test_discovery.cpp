@@ -77,13 +77,14 @@ TEST(CSIDiscovery, EmptyModesEmptyConfigs) {
 
 // Real rpicam-hello --list-cameras shape: a header line, then mode lines whose
 // format token carries across continuation lines, each with a trailing crop.
+// Real `rpicam-hello --list-cameras` capture from an OV5647 on a Pi 5.
 static const char* kRpicamOutput =
     "Available cameras\n"
     "-----------------\n"
-    "0 : ov5647 [2592x1944 10-bit RGGB] (/base/axi/pcie@1000120000/rp1/i2c@88000/ov5647@36)\n"
-    "    Modes: 'SRGGB10_CSI2P' : 640x480 [58.92 fps - (16, 0)/2560x1920 crop]\n"
-    "                             1296x972 [43.25 fps - (0, 0)/2592x1944 crop]\n"
-    "                             1920x1080 [30.62 fps - (348, 434)/1928x1080 crop]\n"
+    "0 : ov5647 [2592x1944 10-bit GBRG] (/base/axi/pcie@1000120000/rp1/i2c@88000/ov5647@36)\n"
+    "    Modes: 'SGBRG10_CSI2P' : 640x480 [62.50 fps - (16, 0)/2560x1920 crop]\n"
+    "                             1296x972 [46.34 fps - (0, 0)/2592x1944 crop]\n"
+    "                             1920x1080 [32.81 fps - (348, 434)/1928x1080 crop]\n"
     "                             2592x1944 [15.63 fps - (0, 0)/2592x1944 crop]\n";
 
 TEST(CSIDiscovery, ParsesRpicamModes) {
@@ -94,12 +95,12 @@ TEST(CSIDiscovery, ParsesRpicamModes) {
     EXPECT_EQ(modes[0].sensor_id, "0");
     EXPECT_EQ(modes[0].width_px, 640);
     EXPECT_EQ(modes[0].height_px, 480);
-    EXPECT_EQ(modes[0].frame_rate, 59);  // 58.92 rounded
-    EXPECT_EQ(modes[0].format, "SRGGB10_CSI2P");
+    EXPECT_EQ(modes[0].frame_rate, 63);  // 62.50 rounded
+    EXPECT_EQ(modes[0].format, "SGBRG10_CSI2P");
     // Format persists onto a continuation line.
     EXPECT_EQ(modes[3].width_px, 2592);
     EXPECT_EQ(modes[3].frame_rate, 16);  // 15.63 rounded
-    EXPECT_EQ(modes[3].format, "SRGGB10_CSI2P");
+    EXPECT_EQ(modes[3].format, "SGBRG10_CSI2P");
 }
 
 TEST(CSIDiscovery, ParsesNoCameras) {
