@@ -1,5 +1,6 @@
 #pragma once
 
+#include <cstdint>
 #include <memory>
 #include <string>
 #include <vector>
@@ -44,12 +45,13 @@ std::vector<sensor_mode> parse_rpicam_list(const std::string& output);
 // Pi backend: shells out to rpicam-hello. Defined in discovery_rpicam.cpp.
 std::unique_ptr<mode_enumerator> make_rpicam_enumerator();
 
-// Parse `v4l2-ctl --list-formats-ext` output into modes for one sensor index.
-// Pure, so unit-tested directly; defined in discovery_v4l2.cpp.
-std::vector<sensor_mode> parse_v4l2_formats(const std::string& output, const std::string& sensor_id);
+// Pure V4L2 helpers (unit-tested); defined in discovery_v4l2.cpp.
+std::string v4l2_fourcc_to_string(std::uint32_t fourcc);
+int v4l2_interval_to_fps(std::uint32_t numerator, std::uint32_t denominator);
 
-// Jetson backend: shells out to v4l2-ctl over /dev/video* (the tegra V4L2 nodes
-// expose the sensor modes Argus would report). Defined in discovery_v4l2.cpp.
+// Jetson backend: reads sensor modes straight from the tegra V4L2 nodes via
+// ioctl (the modes Argus would report), so it needs no external tool. Defined
+// in discovery_v4l2.cpp.
 std::unique_ptr<mode_enumerator> make_v4l2_enumerator();
 
 class CSIDiscovery : public viam::sdk::Discovery {

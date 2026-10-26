@@ -1,16 +1,18 @@
-// Jetson discovery backend: shell out to `v4l2-ctl --list-formats-ext` over the
-// tegra V4L2 nodes. Argus can't be build-linked (no L4T in the focal build image)
-// and has no listing CLI, but the CSI sensor's modes are exposed on /dev/video*,
-// so this needs no Argus headers or linking -- just a subprocess, like the Pi path.
+// Jetson discovery backend: read the CSI sensor modes straight from the tegra
+// V4L2 nodes via ioctl. Argus can't be build-linked (no L4T in the focal image)
+// and has no listing CLI, but the sensor's modes are exposed on /dev/video*
+// through the standard V4L2 uAPI -- which needs only <linux/videodev2.h> (always
+// present), so this requires no external tool and nothing for first_run to add.
 
+#include <fcntl.h>
+#include <linux/videodev2.h>
+#include <sys/ioctl.h>
 #include <unistd.h>
 
-#include <array>
+#include <cctype>
+#include <cerrno>
 #include <cmath>
-#include <cstdio>
-#include <memory>
-#include <regex>
-#include <sstream>
+#include <cstdint>
 #include <string>
 
 #include <viam/sdk/log/logging.hpp>
@@ -19,65 +21,97 @@
 
 namespace csi {
 
-namespace {
-
-// Jetson exposes a handful of /dev/videoN; scan a small range for sensor nodes.
-constexpr int kMaxVideoNodes = 8;
-
-std::string run_command(const std::string& cmd) {
+std::string v4l2_fourcc_to_string(std::uint32_t fourcc) {
+    const char chars[4] = {
+        static_cast<char>(fourcc & 0xFF),
+        static_cast<char>((fourcc >> 8) & 0xFF),
+        static_cast<char>((fourcc >> 16) & 0xFF),
+        static_cast<char>((fourcc >> 24) & 0xFF),
+    };
     std::string out;
-    std::unique_ptr<FILE, decltype(&pclose)> pipe(popen(cmd.c_str(), "r"), pclose);
-    if (!pipe) {
-        return out;
-    }
-    std::array<char, 4096> buf{};
-    while (fgets(buf.data(), static_cast<int>(buf.size()), pipe.get()) != nullptr) {
-        out += buf.data();
+    for (const char c : chars) {
+        if (std::isprint(static_cast<unsigned char>(c))) {
+            out += c;
+        }
     }
     return out;
 }
 
-}  // namespace
-
-// Output shape (v4l2-ctl --list-formats-ext):
-//   [0]: 'RG10' (10-bit Bayer RGRG/GBGB)
-//       Size: Discrete 1920x1080
-//           Interval: Discrete 0.017s (59.999 fps)
-// The format token persists across its sizes; a size may list several intervals,
-// so the mode's rate is the fastest (highest fps) of them.
-std::vector<sensor_mode> parse_v4l2_formats(const std::string& output, const std::string& sensor_id) {
-    static const std::regex format_re(R"(\[\d+\]:\s*'([^']+)')");
-    static const std::regex size_re(R"(Size:\s*Discrete\s*(\d+)x(\d+))");
-    static const std::regex fps_re(R"(\(([0-9.]+)\s*fps\))");
-
-    std::vector<sensor_mode> modes;
-    std::istringstream stream(output);
-    std::string line;
-    std::string current_format;
-    while (std::getline(stream, line)) {
-        std::smatch m;
-        if (std::regex_search(line, m, format_re)) {
-            current_format = m[1].str();
-            continue;
-        }
-        if (std::regex_search(line, m, size_re)) {
-            sensor_mode sm;
-            sm.sensor_id = sensor_id;
-            sm.width_px = std::stoi(m[1].str());
-            sm.height_px = std::stoi(m[2].str());
-            sm.format = current_format;
-            modes.push_back(sm);
-            continue;
-        }
-        if (std::regex_search(line, m, fps_re) && !modes.empty()) {
-            const int fps = static_cast<int>(std::lround(std::stod(m[1].str())));
-            modes.back().frame_rate = std::max(modes.back().frame_rate, fps);
-        }
+int v4l2_interval_to_fps(std::uint32_t numerator, std::uint32_t denominator) {
+    // A V4L2 frame interval is seconds-per-frame (numerator/denominator), so fps
+    // is its reciprocal.
+    if (numerator == 0) {
+        return 0;
     }
-    return modes;
+    return static_cast<int>(std::lround(static_cast<double>(denominator) / static_cast<double>(numerator)));
 }
 
 namespace {
+
+int xioctl(int fd, unsigned long request, void* arg) {
+    int r = 0;
+    do {
+        r = ioctl(fd, request, arg);
+    } while (r == -1 && errno == EINTR);
+    return r;
+}
+
+// Highest fps a (format, size) supports, via VIDIOC_ENUM_FRAMEINTERVALS.
+int max_fps(int fd, std::uint32_t pixelformat, std::uint32_t width, std::uint32_t height) {
+    int best = 0;
+    v4l2_frmivalenum fi{};
+    fi.pixel_format = pixelformat;
+    fi.width = width;
+    fi.height = height;
+    for (fi.index = 0; xioctl(fd, VIDIOC_ENUM_FRAMEINTERVALS, &fi) == 0; fi.index++) {
+        if (fi.type == V4L2_FRMIVAL_TYPE_DISCRETE) {
+            best = std::max(best, v4l2_interval_to_fps(fi.discrete.numerator, fi.discrete.denominator));
+        } else {
+            // Stepwise/continuous: the shortest interval (min) is the fastest fps.
+            best = std::max(best, v4l2_interval_to_fps(fi.stepwise.min.numerator, fi.stepwise.min.denominator));
+            break;
+        }
+    }
+    return best;
+}
+
+void enumerate_type(int fd, std::uint32_t buf_type, const std::string& sensor_id, std::vector<sensor_mode>& out) {
+    v4l2_fmtdesc fmt{};
+    fmt.type = buf_type;
+    for (fmt.index = 0; xioctl(fd, VIDIOC_ENUM_FMT, &fmt) == 0; fmt.index++) {
+        const std::string format = v4l2_fourcc_to_string(fmt.pixelformat);
+        v4l2_frmsizeenum fs{};
+        fs.pixel_format = fmt.pixelformat;
+        for (fs.index = 0; xioctl(fd, VIDIOC_ENUM_FRAMESIZES, &fs) == 0; fs.index++) {
+            // Only discrete sizes are concrete modes; skip stepwise/continuous.
+            if (fs.type != V4L2_FRMSIZE_TYPE_DISCRETE) {
+                break;
+            }
+            sensor_mode m;
+            m.sensor_id = sensor_id;
+            m.width_px = static_cast<int>(fs.discrete.width);
+            m.height_px = static_cast<int>(fs.discrete.height);
+            m.format = format;
+            m.frame_rate = max_fps(fd, fmt.pixelformat, fs.discrete.width, fs.discrete.height);
+            out.push_back(m);
+        }
+    }
+}
+
+std::vector<sensor_mode> enumerate_device(const std::string& dev, const std::string& sensor_id) {
+    std::vector<sensor_mode> modes;
+    const int fd = open(dev.c_str(), O_RDWR | O_NONBLOCK);
+    if (fd < 0) {
+        return modes;
+    }
+    // Tegra sensor nodes may be single- or multi-planar capture; try both.
+    enumerate_type(fd, V4L2_BUF_TYPE_VIDEO_CAPTURE, sensor_id, modes);
+    enumerate_type(fd, V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE, sensor_id, modes);
+    close(fd);
+    return modes;
+}
+
+constexpr int kMaxVideoNodes = 8;
 
 class v4l2_enumerator : public mode_enumerator {
    public:
@@ -88,11 +122,11 @@ class v4l2_enumerator : public mode_enumerator {
             if (access(dev.c_str(), F_OK) != 0) {
                 continue;
             }
-            auto modes = parse_v4l2_formats(run_command("v4l2-ctl --list-formats-ext -d " + dev + " 2>/dev/null"), std::to_string(i));
+            auto modes = enumerate_device(dev, std::to_string(i));
             all.insert(all.end(), modes.begin(), modes.end());
         }
         if (all.empty()) {
-            VIAM_SDK_LOG(warn) << "no camera modes parsed from v4l2-ctl --list-formats-ext";
+            VIAM_SDK_LOG(warn) << "no camera modes found on /dev/video* via V4L2";
         }
         return all;
     }

@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 #
-# Installs host runtime deps: the gstreamer the module links against plus the
-# per-platform tool discovery shells out to (rpicam-apps on Pi, v4l-utils on
-# Jetson). JetPack already ships gstreamer + Argus.
+# Installs host runtime deps. On Pi: the gstreamer the module links against plus
+# rpicam-apps, which discovery shells out to. On Jetson: nothing -- JetPack ships
+# gstreamer + Argus, and discovery reads the V4L2 nodes directly.
 
 # -e omitted: a failing sudo -n must not abort before the warning prints.
 set -uo pipefail
@@ -16,8 +16,10 @@ case "$model" in
         PKGS=(libgstreamer1.0-0 gstreamer1.0-plugins-base gstreamer1.0-plugins-good gstreamer1.0-libcamera rpicam-apps)
         ;;
     *nvidia*|*jetson*)
-        # JetPack ships gstreamer + Argus; v4l-utils provides v4l2-ctl for discovery.
-        PKGS=(v4l-utils)
+        # JetPack ships gstreamer + Argus; discovery reads the V4L2 nodes directly,
+        # so nothing extra is needed.
+        echo "JetPack provides runtime deps; nothing to install."
+        exit 0
         ;;
     *)
         echo "Unrecognized device; nothing to install."; exit 0

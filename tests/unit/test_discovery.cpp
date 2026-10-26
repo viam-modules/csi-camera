@@ -107,35 +107,17 @@ TEST(CSIDiscovery, ParsesNoCameras) {
     EXPECT_TRUE(csi::parse_rpicam_list("").empty());
 }
 
-// Real v4l2-ctl --list-formats-ext shape: a format token, then discrete sizes,
-// each with one or more intervals (fps).
-static const char* kV4l2Output =
-    "ioctl: VIDIOC_ENUM_FMT\n"
-    "\tType: Video Capture\n"
-    "\n"
-    "\t[0]: 'RG10' (10-bit Bayer RGRG/GBGB)\n"
-    "\t\tSize: Discrete 3280x2464\n"
-    "\t\t\tInterval: Discrete 0.048s (21.000 fps)\n"
-    "\t\tSize: Discrete 1920x1080\n"
-    "\t\t\tInterval: Discrete 0.017s (59.999 fps)\n"
-    "\t\t\tInterval: Discrete 0.033s (29.999 fps)\n";
-
-TEST(CSIDiscovery, ParsesV4l2Formats) {
-    const auto modes = csi::parse_v4l2_formats(kV4l2Output, "0");
-
-    ASSERT_EQ(modes.size(), 2u);
-    EXPECT_EQ(modes[0].sensor_id, "0");
-    EXPECT_EQ(modes[0].width_px, 3280);
-    EXPECT_EQ(modes[0].height_px, 2464);
-    EXPECT_EQ(modes[0].frame_rate, 21);
-    EXPECT_EQ(modes[0].format, "RG10");
-    // 1920x1080 lists two intervals; the faster (60) wins.
-    EXPECT_EQ(modes[1].width_px, 1920);
-    EXPECT_EQ(modes[1].frame_rate, 60);
+TEST(CSIDiscovery, V4l2FourccToString) {
+    // 'RG10' packed little-endian, as V4L2 reports pixelformat.
+    const std::uint32_t rg10 = 'R' | ('G' << 8) | ('1' << 16) | ('0' << 24);
+    EXPECT_EQ(csi::v4l2_fourcc_to_string(rg10), "RG10");
 }
 
-TEST(CSIDiscovery, ParsesV4l2Empty) {
-    EXPECT_TRUE(csi::parse_v4l2_formats("", "0").empty());
+TEST(CSIDiscovery, V4l2IntervalToFps) {
+    // Interval is seconds-per-frame; fps is its reciprocal, rounded.
+    EXPECT_EQ(csi::v4l2_interval_to_fps(1, 30), 30);
+    EXPECT_EQ(csi::v4l2_interval_to_fps(1001, 30000), 30);  // 29.97 -> 30
+    EXPECT_EQ(csi::v4l2_interval_to_fps(0, 30), 0);         // zero numerator guarded
 }
 
 TEST(CSIDiscovery, StubEnumeratorForTestDevice) {
