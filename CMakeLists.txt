@@ -12,7 +12,9 @@ option(VIAM_CSI_ENABLE_TESTS "Build viam-csi unit tests" OFF)
 find_package(viam-cpp-sdk CONFIG REQUIRED)
 find_package(gstreamer CONFIG REQUIRED)
 
-add_executable(${PROJECT_NAME} main.cpp csi_camera.cpp utils.cpp)
+# discovery_rpicam.cpp shells out to rpicam-hello at runtime, so the Pi backend
+# needs no build-time libcamera (focal has none) and no extra linking.
+add_executable(${PROJECT_NAME} main.cpp csi_camera.cpp utils.cpp discovery.cpp discovery_rpicam.cpp discovery_v4l2.cpp)
 
 target_link_libraries(${PROJECT_NAME}
         gstreamer::gstreamer
@@ -53,4 +55,17 @@ if(VIAM_CSI_ENABLE_TESTS)
     )
 
     add_test(NAME ${PROJECT_NAME}_test COMMAND ${PROJECT_NAME}_test)
+
+    # Separate exe: tests include the .cpp under test, so each lives in its own
+    # binary to avoid duplicate symbols across translation units.
+    add_executable(${PROJECT_NAME}_discovery_test tests/unit/test_discovery.cpp discovery_rpicam.cpp discovery_v4l2.cpp)
+
+    target_link_libraries(${PROJECT_NAME}_discovery_test
+            gstreamer::gstreamer
+            GTest::gtest
+            GTest::gtest_main
+            viam-cpp-sdk::viamsdk
+    )
+
+    add_test(NAME ${PROJECT_NAME}_discovery_test COMMAND ${PROJECT_NAME}_discovery_test)
 endif()
