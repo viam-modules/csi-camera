@@ -98,18 +98,10 @@ TEST(CSIDiscovery, NullEnumeratorYieldsNoConfigs) {
     EXPECT_TRUE(svc.discover_resources({}).empty());
 }
 
+// The hardware backends are not exercised here: run on a Pi or Jetson, they
+// would query (and on pi, change the format of) the real sensor. The pi
+// enumerator probes on construction, so it is not built at all.
 TEST(CSIDiscovery, JetsonHasNativeEnumerator) {
     ensure_runtime();
-    auto enumerator = make_enumerator(device_type(device_type::jetson, "jetson"));
-    ASSERT_NE(enumerator, nullptr);
-    // Off-device there are no tegra-video nodes; this checks the scan is safe.
-    EXPECT_NO_THROW(enumerator->enumerate());
-}
-
-TEST(CSIDiscovery, PiHasNativeEnumerator) {
-    ensure_runtime();
-    auto enumerator = make_enumerator(device_type(device_type::pi, "pi"));
-    ASSERT_NE(enumerator, nullptr);
-    // Off-device there are no camera-sensor entities; this checks the probe is safe.
-    EXPECT_NO_THROW(enumerator->enumerate());
+    EXPECT_NE(make_enumerator(device_type(device_type::jetson, "jetson")), nullptr);
 }
