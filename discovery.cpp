@@ -375,7 +375,7 @@ std::vector<ResourceConfig> build_configs(const std::vector<sensor_mode>& modes)
         if (!m.sensor_id.empty()) {
             attributes["video_path"] = m.sensor_id;
         }
-        configs.emplace_back("camera", mode_name(m), API_NAMESPACE, attributes, "rdk:component:camera", model, log_level::info);
+        configs.emplace_back("camera", mode_name(m), "rdk", attributes, "rdk:component:camera", model, log_level::info);
     }
     return configs;
 }
