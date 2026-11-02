@@ -183,6 +183,8 @@ std::optional<sensor_node> first_sensor() {
                     "/sys/dev/char/" + std::to_string(entity.dev.major) + ":" + std::to_string(entity.dev.minor), ec);
                 if (!ec) {
                     found = sensor_node{path, "/dev/" + target.filename().string()};
+                } else {
+                    VIAM_SDK_LOG(warn) << "could not find the device node of sensor " << entity.name << ": " << ec.message();
                 }
             }
             entity.id |= MEDIA_ENT_ID_FLAG_NEXT;
