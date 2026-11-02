@@ -111,7 +111,7 @@ Add a `discovery` service with the `viam:camera:csi-discovery` model (no attribu
 ```
 
 - Jetson: every CSI sensor is listed, with `video_path` set to its sensor id.
-- Raspberry Pi: the first camera's modes are listed, without `video_path`. They are read once when the module starts; if another program is using the camera then, restart the module once it is free.
+- Raspberry Pi: the first camera's modes are listed, without `video_path`. They are read when the module starts; if another program is using the camera then, they are listed once it is free.
 
 ### Migrating from `csi-cam-pi`
 
