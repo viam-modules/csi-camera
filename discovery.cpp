@@ -141,22 +141,21 @@ class v4l2_enumerator : public mode_enumerator {
     }
 };
 
-// A camera sensor's subdev node and whether a camera holds its media device.
+// A camera sensor's subdev node and the media device it belongs to.
 struct sensor_node {
+    std::string media_path;
     std::string subdev_path;
-    bool in_use;
 };
 
-// libcamera lockf()s every media device of a camera it has acquired. Queried
-// with an OFD lock, which conflicts with lockf() locks even from this process.
-bool media_in_use(int fd) {
+// Takes libcamera's lock on a media device. libcamera lockf()s the media
+// devices of a camera it acquires, so this fails while a camera is in use, and
+// once taken it keeps one from starting until fd is closed. An OFD lock
+// conflicts with lockf() locks even when they are held by this process.
+bool lock_media(int fd) {
     struct flock lock{};
     lock.l_type = F_WRLCK;
     lock.l_whence = SEEK_SET;
-    if (fcntl(fd, F_OFD_GETLK, &lock) != 0) {
-        return true;  // Unknown: assume in use rather than risk disturbing a stream.
-    }
-    return lock.l_type != F_UNLCK;
+    return fcntl(fd, F_OFD_SETLK, &lock) == 0;
 }
 
 // The first camera-sensor entity in the media graphs, in /dev/mediaN order.
@@ -182,7 +181,7 @@ std::optional<sensor_node> first_sensor() {
                 const auto target = std::filesystem::read_symlink(
                     "/sys/dev/char/" + std::to_string(entity.dev.major) + ":" + std::to_string(entity.dev.minor), ec);
                 if (!ec) {
-                    found = sensor_node{"/dev/" + target.filename().string(), media_in_use(fd)};
+                    found = sensor_node{path, "/dev/" + target.filename().string()};
                 }
             }
             entity.id |= MEDIA_ENT_ID_FLAG_NEXT;
@@ -290,18 +289,27 @@ class subdev_enumerator : public mode_enumerator {
         if (!sensor) {
             return {};
         }
-        if (sensor->in_use) {
-            VIAM_SDK_LOG(warn) << sensor->subdev_path << " is in use; restart the module once it is free to discover its modes";
-            return {};
-        }
-        const int fd = open(sensor->subdev_path.c_str(), O_RDWR | O_NONBLOCK);
-        if (fd < 0) {
+        const int media_fd = open(sensor->media_path.c_str(), O_RDWR | O_NONBLOCK);
+        if (media_fd < 0) {
             const int err = errno;
-            VIAM_SDK_LOG(warn) << "could not open " << sensor->subdev_path << ": " << std::strerror(err);
+            VIAM_SDK_LOG(warn) << "could not open " << sensor->media_path << ": " << std::strerror(err);
             return {};
         }
-        auto modes = to_modes(subdev_rates(fd, sensor->subdev_path), "");
-        close(fd);
+        // Held until media_fd is closed, so no camera can start mid-probe.
+        std::vector<sensor_mode> modes;
+        if (!lock_media(media_fd)) {
+            VIAM_SDK_LOG(warn) << sensor->subdev_path << " is in use; restart the module once it is free to discover its modes";
+        } else {
+            const int fd = open(sensor->subdev_path.c_str(), O_RDWR | O_NONBLOCK);
+            if (fd < 0) {
+                const int err = errno;
+                VIAM_SDK_LOG(warn) << "could not open " << sensor->subdev_path << ": " << std::strerror(err);
+            } else {
+                modes = to_modes(subdev_rates(fd, sensor->subdev_path), "");
+                close(fd);
+            }
+        }
+        close(media_fd);
         return modes;
     }
 
