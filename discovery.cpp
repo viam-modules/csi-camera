@@ -33,7 +33,7 @@ constexpr int MAX_DEVICE_NODES = 64;
 // V4L2 driver name of the Jetson VI (CSI capture) nodes.
 constexpr const char* TEGRA_VIDEO_DRIVER = "tegra-video";
 
-// Highest frame rate per (width, height).
+// Frame rate per (width, height).
 using rate_map = std::map<std::pair<uint32_t, uint32_t>, int>;
 
 int xioctl(int fd, unsigned long request, void* arg) {
@@ -50,10 +50,18 @@ int achievable_fps(double fps) {
     return static_cast<int>(std::floor(fps + 1e-6));
 }
 
-// A size can be listed under several raw formats; keep its highest rate.
-void keep_max(rate_map& rates, uint32_t width, uint32_t height, int fps) {
-    int& best = rates[{width, height}];
-    best = std::max(best, fps);
+// A size can be listed under several raw formats, each with its own rate, and
+// the pipeline rather than discovery picks the format. Keep the lowest measured
+// rate, the one that is reachable whichever format is picked. 0 (not measured)
+// is skipped.
+void keep_lowest(rate_map& rates, uint32_t width, uint32_t height, int fps) {
+    if (fps <= 0) {
+        return;
+    }
+    const auto [it, inserted] = rates.try_emplace({width, height}, fps);
+    if (!inserted) {
+        it->second = std::min(it->second, fps);
+    }
 }
 
 std::vector<sensor_mode> to_modes(const rate_map& rates, const std::string& sensor_id) {
@@ -86,7 +94,7 @@ int max_frame_rate(int fd, uint32_t pixel_format, uint32_t width, uint32_t heigh
     return best;
 }
 
-// Discrete frame sizes of a tegra-video capture node, each at its highest rate.
+// Discrete frame sizes of a tegra-video capture node and their frame rates.
 rate_map capture_node_rates(int fd) {
     rate_map rates;
     v4l2_fmtdesc fmt{};
@@ -98,7 +106,7 @@ rate_map capture_node_rates(int fd) {
         for (size.index = 0; xioctl(fd, VIDIOC_ENUM_FRAMESIZES, &size) == 0 && size.type == V4L2_FRMSIZE_TYPE_DISCRETE; size.index++) {
             const uint32_t width = size.discrete.width;
             const uint32_t height = size.discrete.height;
-            keep_max(rates, width, height, max_frame_rate(fd, fmt.pixelformat, width, height));
+            keep_lowest(rates, width, height, max_frame_rate(fd, fmt.pixelformat, width, height));
         }
     }
     return rates;
@@ -219,7 +227,7 @@ int active_max_frame_rate(int fd, uint32_t width, uint32_t height) {
     return frame_pixels > 0 ? achievable_fps(static_cast<double>(pixel_rate.value64) / frame_pixels) : 0;
 }
 
-// Discrete modes of a sensor subdev, each at its highest rate. A mode's timing
+// Discrete modes of a sensor subdev and their max frame rates. A mode's timing
 // controls are only valid while it is the active format, so each mode is set in
 // turn and the original format restored. The first refused change ends the
 // probe; only measured modes are kept.
@@ -258,7 +266,7 @@ rate_map subdev_rates(int fd, const std::string& path) {
             }
             changed = true;
             if (fmt.format.width == size.max_width && fmt.format.height == size.max_height) {
-                keep_max(rates, size.max_width, size.max_height, active_max_frame_rate(fd, size.max_width, size.max_height));
+                keep_lowest(rates, size.max_width, size.max_height, active_max_frame_rate(fd, size.max_width, size.max_height));
             }
         }
     }
