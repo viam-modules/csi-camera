@@ -63,6 +63,17 @@ TEST(CSIDiscovery, SkipsModesWithoutFrameRate) {
     EXPECT_EQ(configs[0].name(), "csi-0-1280x720-60fps");
 }
 
+TEST(CSIDiscovery, SizeKeepsLowestMeasuredRate) {
+    rate_map rates;
+    keep_lowest(rates, 640, 480, 60);  // e.g. an 8-bit format
+    keep_lowest(rates, 640, 480, 30);  // the 10-bit format the pipeline may pick
+    keep_lowest(rates, 640, 480, 0);   // not measured
+    keep_lowest(rates, 1920, 1080, 0);
+
+    ASSERT_EQ(rates.size(), 1u);
+    EXPECT_EQ(rates.at({640, 480}), 30);
+}
+
 TEST(CSIDiscovery, IntervalFpsFloors) {
     EXPECT_EQ(interval_fps({1, 30}), 30);        // an exact rate stays put
     EXPECT_EQ(interval_fps({1001, 30000}), 29);  // 29.97 must not round up past the sensor's max
