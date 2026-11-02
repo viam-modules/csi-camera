@@ -63,6 +63,12 @@ TEST(CSIDiscovery, SkipsModesWithoutFrameRate) {
     EXPECT_EQ(configs[0].name(), "csi-0-1280x720-60fps");
 }
 
+TEST(CSIDiscovery, IntervalFpsFloors) {
+    EXPECT_EQ(interval_fps({1, 30}), 30);        // an exact rate stays put
+    EXPECT_EQ(interval_fps({1001, 30000}), 29);  // 29.97 must not round up past the sensor's max
+    EXPECT_EQ(interval_fps({0, 30}), 0);         // invalid interval
+}
+
 TEST(CSIDiscovery, EmptyModesEmptyConfigs) {
     ensure_runtime();
     EXPECT_TRUE(build_configs({}).empty());
