@@ -14,6 +14,7 @@
 #include <cstring>
 #include <filesystem>
 #include <map>
+#include <mutex>
 #include <optional>
 #include <utility>
 
@@ -268,14 +269,19 @@ rate_map subdev_rates(int fd, const std::string& path) {
 
 // Raspberry Pi sensors are V4L2 subdevs in the camera's media graph, read
 // directly rather than through libcamera, whose ABI changes every release. The
-// probe runs once, at construction: main() builds this before serving, so none
-// of this module's cameras is streaming yet. CSI sensors are not hot-pluggable,
-// so the result is kept for the module's lifetime.
+// probe runs at construction: main() builds this before serving, so none of
+// this module's cameras is streaming yet. CSI sensors are not hot-pluggable, so
+// a result is kept for the module's lifetime; a probe that found nothing (e.g.
+// another program held the camera) is retried on each call.
 class subdev_enumerator : public mode_enumerator {
    public:
     subdev_enumerator() : modes_(probe()) {}
 
     std::vector<sensor_mode> enumerate() override {
+        const std::lock_guard<std::mutex> lock(mutex_);
+        if (modes_.empty()) {
+            modes_ = probe();
+        }
         return modes_;
     }
 
@@ -298,7 +304,7 @@ class subdev_enumerator : public mode_enumerator {
         // Held until media_fd is closed, so no camera can start mid-probe.
         std::vector<sensor_mode> modes;
         if (!lock_media(media_fd)) {
-            VIAM_SDK_LOG(warn) << sensor->subdev_path << " is in use; restart the module once it is free to discover its modes";
+            VIAM_SDK_LOG(warn) << sensor->subdev_path << " is in use; its modes are listed once no camera is using it";
         } else {
             const int fd = open(sensor->subdev_path.c_str(), O_RDWR | O_NONBLOCK);
             if (fd < 0) {
@@ -313,7 +319,8 @@ class subdev_enumerator : public mode_enumerator {
         return modes;
     }
 
-    const std::vector<sensor_mode> modes_;
+    std::mutex mutex_;
+    std::vector<sensor_mode> modes_;
 };
 
 // Canned modes so discovery returns something in test mode and so the service
