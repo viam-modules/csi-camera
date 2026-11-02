@@ -63,17 +63,24 @@ std::vector<sensor_mode> to_modes(const rate_map& rates, const std::string& sens
     return modes;
 }
 
-// Highest discrete frame rate reported for a frame size, or 0 if none is.
+// Whole frames per second of a frame interval, or 0 if the interval is invalid.
+int interval_fps(const v4l2_fract& interval) {
+    return interval.numerator > 0 ? achievable_fps(static_cast<double>(interval.denominator) / interval.numerator) : 0;
+}
+
+// Highest frame rate reported for a frame size, or 0 if none is.
 int max_frame_rate(int fd, uint32_t pixel_format, uint32_t width, uint32_t height) {
     int best = 0;
     v4l2_frmivalenum ival{};
     ival.pixel_format = pixel_format;
     ival.width = width;
     ival.height = height;
-    for (ival.index = 0; xioctl(fd, VIDIOC_ENUM_FRAMEINTERVALS, &ival) == 0 && ival.type == V4L2_FRMIVAL_TYPE_DISCRETE; ival.index++) {
-        if (ival.discrete.numerator > 0) {
-            best = std::max(best, achievable_fps(static_cast<double>(ival.discrete.denominator) / ival.discrete.numerator));
+    for (ival.index = 0; xioctl(fd, VIDIOC_ENUM_FRAMEINTERVALS, &ival) == 0; ival.index++) {
+        if (ival.type != V4L2_FRMIVAL_TYPE_DISCRETE) {
+            // A stepwise or continuous range is reported once; its shortest interval is the highest rate.
+            return interval_fps(ival.stepwise.min);
         }
+        best = std::max(best, interval_fps(ival.discrete));
     }
     return best;
 }
