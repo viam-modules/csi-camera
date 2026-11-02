@@ -13,6 +13,7 @@
 #include <cstdint>
 #include <cstring>
 #include <filesystem>
+#include <fstream>
 #include <map>
 #include <mutex>
 #include <optional>
@@ -30,8 +31,8 @@ namespace {
 
 // Upper bound on the /dev/videoN and /dev/mediaN nodes scanned for sensors.
 constexpr int MAX_DEVICE_NODES = 64;
-// V4L2 driver name of the Jetson VI (CSI capture) nodes.
-constexpr const char* TEGRA_VIDEO_DRIVER = "tegra-video";
+// sysfs name prefix of the Jetson VI (CSI capture) nodes: "vi-output, <sensor> <i2c bus-addr>".
+constexpr const char* TEGRA_VI_NAME_PREFIX = "vi-output";
 
 // Frame rate per (width, height).
 using rate_map = std::map<std::pair<uint32_t, uint32_t>, int>;
@@ -112,6 +113,14 @@ rate_map capture_node_rates(int fd) {
     return rates;
 }
 
+// True if /dev/videoN is a Jetson CSI capture node, judged by its sysfs name so
+// that other nodes, e.g. USB webcams, are never opened.
+bool is_csi_capture_node(int n) {
+    std::ifstream name_file("/sys/class/video4linux/video" + std::to_string(n) + "/name");
+    std::string name;
+    return std::getline(name_file, name) && name.rfind(TEGRA_VI_NAME_PREFIX, 0) == 0;
+}
+
 // Jetson CSI sensors are exposed as tegra-video V4L2 capture nodes whose discrete
 // frame sizes and intervals are the sensor modes Argus selects from, so they can
 // be read with plain ioctls instead of linking libargus. The queries are
@@ -119,31 +128,24 @@ rate_map capture_node_rates(int fd) {
 class v4l2_enumerator : public mode_enumerator {
    public:
     std::vector<sensor_mode> enumerate() override {
-        // Assumes Argus sensor-ids follow /dev/videoN order, so the k-th
-        // tegra-video node is sensor-id k (verified on a single-sensor Orin Nano).
-        // Other capture nodes, e.g. USB webcams, are skipped and take no id.
+        // Assumes Argus sensor-ids follow /dev/videoN order, so the k-th CSI
+        // capture node is sensor-id k (verified on a single-sensor Orin Nano).
         std::vector<sensor_mode> modes;
         int sensor_index = 0;
         for (int n = 0; n < MAX_DEVICE_NODES; n++) {
-            const std::string path = "/dev/video" + std::to_string(n);
-            const int fd = open(path.c_str(), O_RDWR | O_NONBLOCK);
-            if (fd < 0 && errno == ENOENT) {
+            if (!is_csi_capture_node(n)) {
                 continue;
             }
-            v4l2_capability cap{};
-            if (fd < 0 || xioctl(fd, VIDIOC_QUERYCAP, &cap) != 0) {
-                // An unreadable node may be a sensor, which would shift every later sensor-id.
+            const std::string path = "/dev/video" + std::to_string(n);
+            const int fd = open(path.c_str(), O_RDWR | O_NONBLOCK);
+            if (fd < 0) {
+                // Skipping it would shift every later sensor-id.
                 const int err = errno;
-                VIAM_SDK_LOG(warn) << "could not query " << path << ", skipping discovery: " << std::strerror(err);
-                if (fd >= 0) {
-                    close(fd);
-                }
+                VIAM_SDK_LOG(warn) << "could not open " << path << ", skipping discovery: " << std::strerror(err);
                 return {};
             }
-            if (std::strcmp(reinterpret_cast<const char*>(cap.driver), TEGRA_VIDEO_DRIVER) == 0) {
-                const auto node_modes = to_modes(capture_node_rates(fd), std::to_string(sensor_index++));
-                modes.insert(modes.end(), node_modes.begin(), node_modes.end());
-            }
+            const auto node_modes = to_modes(capture_node_rates(fd), std::to_string(sensor_index++));
+            modes.insert(modes.end(), node_modes.begin(), node_modes.end());
             close(fd);
         }
         return modes;
