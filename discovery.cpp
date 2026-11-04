@@ -67,8 +67,8 @@ void keep_lowest(rate_map& rates, uint32_t width, uint32_t height, int fps) {
 
 std::vector<sensor_mode> to_modes(const rate_map& rates, const std::string& sensor_id) {
     std::vector<sensor_mode> modes;
-    for (auto it = rates.rbegin(); it != rates.rend(); ++it) {  // largest first
-        modes.push_back({sensor_id, static_cast<int>(it->first.first), static_cast<int>(it->first.second), it->second});
+    for (const auto& [size, fps] : rates) {
+        modes.push_back({sensor_id, static_cast<int>(size.first), static_cast<int>(size.second), fps});
     }
     return modes;
 }
