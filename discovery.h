@@ -1,7 +1,10 @@
 #pragma once
 
+#include <cstdint>
+#include <map>
 #include <memory>
 #include <string>
+#include <utility>
 #include <vector>
 
 #include <viam/sdk/config/resource.hpp>
@@ -27,6 +30,18 @@ struct mode_enumerator {
     virtual ~mode_enumerator() = default;
     virtual std::vector<sensor_mode> enumerate() = 0;
 };
+
+// Frame rate per (width, height).
+using rate_map = std::map<std::pair<uint32_t, uint32_t>, int>;
+
+// A size can be listed under several raw formats, each with its own rate, and
+// the pipeline rather than discovery picks the format. Keep the lowest measured
+// rate, the one that is reachable whichever format is picked. 0 (not measured)
+// is skipped.
+void keep_lowest(rate_map& rates, uint32_t width, uint32_t height, int fps);
+
+// Whole frames per second of a V4L2 frame interval, or 0 if the interval is invalid.
+int interval_fps(uint32_t numerator, uint32_t denominator);
 
 // Build one camera ResourceConfig per sensor mode with a known frame rate. Pure
 // (no hardware access) so it is unit-tested directly. Each config is

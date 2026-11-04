@@ -34,9 +34,6 @@ constexpr int MAX_DEVICE_NODES = 64;
 // sysfs name prefix of the Jetson VI (CSI capture) nodes: "vi-output, <sensor> <i2c bus-addr>".
 constexpr const char* TEGRA_VI_NAME_PREFIX = "vi-output";
 
-// Frame rate per (width, height).
-using rate_map = std::map<std::pair<uint32_t, uint32_t>, int>;
-
 int xioctl(int fd, unsigned long request, void* arg) {
     int ret;
     do {
@@ -51,20 +48,6 @@ int achievable_fps(double fps) {
     return static_cast<int>(std::floor(fps + 1e-6));
 }
 
-// A size can be listed under several raw formats, each with its own rate, and
-// the pipeline rather than discovery picks the format. Keep the lowest measured
-// rate, the one that is reachable whichever format is picked. 0 (not measured)
-// is skipped.
-void keep_lowest(rate_map& rates, uint32_t width, uint32_t height, int fps) {
-    if (fps <= 0) {
-        return;
-    }
-    const auto [it, inserted] = rates.try_emplace({width, height}, fps);
-    if (!inserted) {
-        it->second = std::min(it->second, fps);
-    }
-}
-
 std::vector<sensor_mode> to_modes(const rate_map& rates, const std::string& sensor_id) {
     std::vector<sensor_mode> modes;
     for (auto it = rates.rbegin(); it != rates.rend(); ++it) {  // largest first
@@ -73,9 +56,8 @@ std::vector<sensor_mode> to_modes(const rate_map& rates, const std::string& sens
     return modes;
 }
 
-// Whole frames per second of a frame interval, or 0 if the interval is invalid.
 int interval_fps(const v4l2_fract& interval) {
-    return interval.numerator > 0 ? achievable_fps(static_cast<double>(interval.denominator) / interval.numerator) : 0;
+    return csi::interval_fps(interval.numerator, interval.denominator);
 }
 
 // Highest frame rate reported for a frame size, or 0 if none is.
@@ -357,6 +339,20 @@ std::string mode_name(const sensor_mode& m) {
 }
 
 }  // namespace
+
+void keep_lowest(rate_map& rates, uint32_t width, uint32_t height, int fps) {
+    if (fps <= 0) {
+        return;
+    }
+    const auto [it, inserted] = rates.try_emplace({width, height}, fps);
+    if (!inserted) {
+        it->second = std::min(it->second, fps);
+    }
+}
+
+int interval_fps(uint32_t numerator, uint32_t denominator) {
+    return numerator > 0 ? achievable_fps(static_cast<double>(denominator) / numerator) : 0;
+}
 
 std::vector<ResourceConfig> build_configs(const std::vector<sensor_mode>& modes) {
     const Model model{API_NAMESPACE, API_TYPE, API_SUBTYPE};
