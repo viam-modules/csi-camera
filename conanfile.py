@@ -28,6 +28,8 @@ class ViamCsi(ConanFile):
         "utils.cpp",
         "utils.h",
         "constraints.h",
+        "discovery.cpp",
+        "discovery.h",
         "meta.json",
         "first_run.sh",
         "tests/*",

@@ -12,6 +12,9 @@ constexpr const char* API_NAMESPACE = "viam";
 constexpr const char* API_TYPE = "camera";
 constexpr const char* API_SUBTYPE = "csi";
 
+// Discovery service model subtype (viam:camera:csi-discovery)
+constexpr const char* DISCOVERY_API_SUBTYPE = "csi-discovery";
+
 // GST
 constexpr int GST_GET_STATE_TIMEOUT = 1;
 constexpr int GST_CHANGE_STATE_TIMEOUT = 5;

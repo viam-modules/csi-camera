@@ -8,9 +8,11 @@
 #include <viam/sdk/module/service.hpp>
 #include <viam/sdk/registry/registry.hpp>
 #include <viam/sdk/resource/resource.hpp>
+#include <viam/sdk/services/discovery.hpp>
 
 #include "constraints.h"
 #include "csi_camera.h"
+#include "discovery.h"
 #include "utils.h"
 
 using namespace viam::sdk;
@@ -37,7 +39,18 @@ int main(int argc, char* argv[]) try {
             return std::make_shared<csi::CSICamera>(resource_config.name(), resource_config.attributes());
         });
 
-    std::vector<std::shared_ptr<ModelRegistration>> mrs = {module_registration};
+    // Built before serving so the pi backend probes its sensor before any camera
+    // is streaming; shared by every discovery resource.
+    std::shared_ptr<csi::mode_enumerator> enumerator = csi::make_enumerator(device);
+
+    auto discovery_registration =
+        std::make_shared<ModelRegistration>(API::get<Discovery>(),
+                                            Model{csi::API_NAMESPACE, csi::API_TYPE, csi::DISCOVERY_API_SUBTYPE},
+                                            [enumerator](Dependencies, ResourceConfig resource_config) -> std::shared_ptr<Resource> {
+                                                return std::make_shared<csi::CSIDiscovery>(resource_config.name(), enumerator);
+                                            });
+
+    std::vector<std::shared_ptr<ModelRegistration>> mrs = {module_registration, discovery_registration};
     auto module_service = std::make_shared<ModuleService>(argc, argv, mrs);
 
     module_service->serve();
