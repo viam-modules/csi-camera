@@ -20,9 +20,7 @@ struct sensor_mode {
 };
 
 // Enumerates the sensor modes available on a device. The concrete backend is
-// platform-specific (V4L2 sensor subdevs on pi, V4L2 capture nodes on jetson)
-// and selected at runtime by device type, so this interface is the seam the
-// native query lives behind.
+// platform-specific (V4L2 sensor subdevs on pi, V4L2 capture nodes on jetson).
 struct mode_enumerator {
     virtual ~mode_enumerator() = default;
     virtual std::vector<sensor_mode> enumerate() = 0;
