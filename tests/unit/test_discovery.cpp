@@ -2,9 +2,9 @@
 
 #include <viam/sdk/common/instance.hpp>
 
-#include "../../constraints.h"
-#include "../../discovery.cpp"
-#include "../../utils.cpp"
+#include "constraints.h"
+#include "discovery.h"
+#include "utils.h"
 
 using namespace viam::sdk;
 using namespace csi;
@@ -75,9 +75,9 @@ TEST(CSIDiscovery, SizeKeepsLowestMeasuredRate) {
 }
 
 TEST(CSIDiscovery, IntervalFpsFloors) {
-    EXPECT_EQ(interval_fps({1, 30}), 30);        // an exact rate stays put
-    EXPECT_EQ(interval_fps({1001, 30000}), 29);  // 29.97 must not round up past the sensor's max
-    EXPECT_EQ(interval_fps({0, 30}), 0);         // invalid interval
+    EXPECT_EQ(interval_fps(1, 30), 30);        // an exact rate stays put
+    EXPECT_EQ(interval_fps(1001, 30000), 29);  // 29.97 must not round up past the sensor's max
+    EXPECT_EQ(interval_fps(0, 30), 0);         // invalid interval
 }
 
 TEST(CSIDiscovery, EmptyModesEmptyConfigs) {
