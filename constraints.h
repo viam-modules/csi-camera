@@ -42,6 +42,11 @@ constexpr std::chrono::milliseconds ENCODE_TIMEOUT{2000};
 constexpr const char* LAST_SERVED_FRAME_KEY = "last_served_frame";
 constexpr const char* FROM_STREAM_SERVER_KEY = "fromStreamServer";
 
+// Status: fps is measured over the frames that arrived within this window
+constexpr std::chrono::seconds FPS_WINDOW{5};
+constexpr const char* STATUS_FPS_KEY = "fps";
+constexpr const char* STATUS_FRAME_AGE_KEY = "newest_frame_age_ms";
+
 // Jetson
 constexpr const char* JETSON_INPUT_SOURCE = "nvarguscamerasrc";
 constexpr const char* JETSON_INPUT_FORMAT = "video/x-raw(memory:NVMM)";
