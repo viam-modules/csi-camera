@@ -9,9 +9,9 @@
 #include <viam/sdk/common/utils.hpp>
 #include <viam/sdk/components/camera.hpp>
 
-#include "../../constraints.h"
-#include "../../csi_camera.cpp"
-#include "../../utils.cpp"
+#include "constraints.h"
+#include "csi_camera.h"
+#include "utils.h"
 
 using namespace viam::sdk;
 using namespace csi;
