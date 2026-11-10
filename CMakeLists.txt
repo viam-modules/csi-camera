@@ -12,7 +12,7 @@ option(VIAM_CSI_ENABLE_TESTS "Build viam-csi unit tests" OFF)
 find_package(viam-cpp-sdk CONFIG REQUIRED)
 find_package(gstreamer CONFIG REQUIRED)
 
-add_executable(${PROJECT_NAME} main.cpp csi_camera.cpp utils.cpp)
+add_executable(${PROJECT_NAME} main.cpp csi_camera.cpp utils.cpp discovery.cpp)
 
 target_link_libraries(${PROJECT_NAME}
         gstreamer::gstreamer
@@ -53,4 +53,17 @@ if(VIAM_CSI_ENABLE_TESTS)
     )
 
     add_test(NAME ${PROJECT_NAME}_test COMMAND ${PROJECT_NAME}_test)
+
+    # Separate exe: tests include the .cpp under test, so each lives in its own
+    # binary to avoid duplicate symbols across translation units.
+    add_executable(${PROJECT_NAME}_discovery_test tests/unit/test_discovery.cpp)
+
+    target_link_libraries(${PROJECT_NAME}_discovery_test
+            gstreamer::gstreamer
+            GTest::gtest
+            GTest::gtest_main
+            viam-cpp-sdk::viamsdk
+    )
+
+    add_test(NAME ${PROJECT_NAME}_discovery_test COMMAND ${PROJECT_NAME}_discovery_test)
 endif()
