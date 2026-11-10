@@ -12,12 +12,18 @@ option(VIAM_CSI_ENABLE_TESTS "Build viam-csi unit tests" OFF)
 find_package(viam-cpp-sdk CONFIG REQUIRED)
 find_package(gstreamer CONFIG REQUIRED)
 
-add_executable(${PROJECT_NAME} main.cpp csi_camera.cpp utils.cpp discovery.cpp)
+add_library(viam-csi-cam csi_camera.cpp utils.cpp discovery.cpp)
 
-target_link_libraries(${PROJECT_NAME}
+target_include_directories(viam-csi-cam PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
+
+target_link_libraries(viam-csi-cam PUBLIC
         gstreamer::gstreamer
         viam-cpp-sdk::viamsdk
 )
+
+add_executable(${PROJECT_NAME} main.cpp)
+
+target_link_libraries(${PROJECT_NAME} PUBLIC viam-csi-cam)
 
 # glibc < 2.34 (focal) keeps POSIX AIO symbols in librt; newer glibc merges them
 # into libc. The SDK's Conan package places libviam_rust_utils.a last in link
@@ -45,24 +51,20 @@ if(VIAM_CSI_ENABLE_TESTS)
 
     add_executable(${PROJECT_NAME}_test tests/unit/test_csi_camera.cpp)
 
-    target_link_libraries(${PROJECT_NAME}_test
-            gstreamer::gstreamer
+    target_link_libraries(${PROJECT_NAME}_test PUBLIC
+            viam-csi-cam
             GTest::gtest
             GTest::gtest_main
-            viam-cpp-sdk::viamsdk
     )
 
     add_test(NAME ${PROJECT_NAME}_test COMMAND ${PROJECT_NAME}_test)
 
-    # Separate exe: tests include the .cpp under test, so each lives in its own
-    # binary to avoid duplicate symbols across translation units.
     add_executable(${PROJECT_NAME}_discovery_test tests/unit/test_discovery.cpp)
 
-    target_link_libraries(${PROJECT_NAME}_discovery_test
-            gstreamer::gstreamer
+    target_link_libraries(${PROJECT_NAME}_discovery_test PUBLIC
+            viam-csi-cam
             GTest::gtest
             GTest::gtest_main
-            viam-cpp-sdk::viamsdk
     )
 
     add_test(NAME ${PROJECT_NAME}_discovery_test COMMAND ${PROJECT_NAME}_discovery_test)
