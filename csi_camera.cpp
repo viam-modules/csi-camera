@@ -258,8 +258,45 @@ Camera::properties CSICamera::get_properties() {
     return p;
 }
 
+// Reports frames as they arrive from the camera, before any request for
+// them, so a stall here is a camera fault and not a transport one
 ProtoStruct CSICamera::get_status() {
-    return ProtoStruct{};
+    std::lock_guard<std::mutex> lock(frame_mutex);
+    const auto now = std::chrono::steady_clock::now();
+    drop_old_frame_arrivals(now);
+
+    double fps = 0.0;
+    if (frame_arrivals.size() >= 2) {
+        const auto count = static_cast<double>(frame_arrivals.size());
+        const std::chrono::duration<double> span = frame_arrivals.back() - frame_arrivals.front();
+        const std::chrono::duration<double> span_to_now = now - frame_arrivals.front();
+        if (span.count() > 0) {
+            // The time since the newest frame counts as one more interval, which
+            // lowers the rate only once the next frame is overdue
+            fps = std::min((count - 1) / span.count(), count / span_to_now.count());
+        }
+    }
+
+    ProtoStruct status;
+    status.emplace(STATUS_FPS_KEY, fps);
+    // Absent until the first frame arrives
+    if (latest_frame_time != std::chrono::system_clock::time_point{}) {
+        const std::chrono::duration<double, std::milli> age = std::chrono::system_clock::now() - latest_frame_time;
+        status.emplace(STATUS_FRAME_AGE_KEY, std::max(age.count(), 0.0));
+    }
+    return status;
+}
+
+void CSICamera::record_frame_arrival() {
+    const auto now = std::chrono::steady_clock::now();
+    frame_arrivals.push_back(now);
+    drop_old_frame_arrivals(now);
+}
+
+void CSICamera::drop_old_frame_arrivals(std::chrono::steady_clock::time_point now) {
+    while (!frame_arrivals.empty() && now - frame_arrivals.front() > FPS_WINDOW) {
+        frame_arrivals.pop_front();
+    }
 }
 
 void CSICamera::init_csi(const std::string pipeline_args) {
@@ -535,6 +572,7 @@ GstFlowReturn CSICamera::handle_new_sample() {
             previous = std::exchange(latest_sample, std::move(sample));
             latest_frame_seq++;
             latest_frame_time = std::chrono::system_clock::now();
+            record_frame_arrival();
         }
         frame_cv.notify_all();
         return GST_FLOW_OK;
@@ -549,6 +587,7 @@ GstFlowReturn CSICamera::handle_new_sample() {
                 std::lock_guard<std::mutex> lock(frame_mutex);
                 latest_frame = std::move(bytes);
                 latest_frame_time = std::chrono::system_clock::now();
+                record_frame_arrival();
             }
             frame_cv.notify_all();
         } catch (const std::exception& e) {

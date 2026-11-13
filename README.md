@@ -68,6 +68,17 @@ A `GetImages` request with `extra` set to `{"last_served_frame": true}` gets the
 
 viam-server's stream server marks its live-view polling with `{"fromStreamServer": true}`. With `last_served_frame_for_stream`, those requests are treated the same way; otherwise, like requests without either key, they get a fresh frame.
 
+#### Status
+
+`GetStatus` reports how fresh the camera's frames are, measured where frames arrive from the sensor and before any request for them:
+
+| Name | Type | Description |
+| ---- | ---- | ----------- |
+| `fps` | float | Frames per second received from the camera over the last 5 seconds. `0` if fewer than two frames arrived in that time. |
+| `newest_frame_age_ms` | float | Milliseconds since the newest frame arrived. Absent until the first frame arrives. |
+
+A steady `fps` and a small `newest_frame_age_ms` while a client sees stalls point at the transport between the camera and the client, not at the camera.
+
 ### Example Configuration
 
 ```json
