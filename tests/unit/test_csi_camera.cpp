@@ -413,6 +413,37 @@ TEST(CSICamera, StatusReportsFrameFreshness) {
     camera.stop_pipeline();
 }
 
+// Test that the reported fps falls as soon as frames stop arriving, while the
+// frames from before the stall are still inside FPS_WINDOW
+TEST(CSICamera, StatusFpsFallsWhenFramesStop) {
+    ensure_runtime();
+    ScopedDevice pi("pi");
+
+    ProtoStruct attrs;
+    attrs.insert(std::make_pair("encode_on_request", ProtoValue(true)));
+    CSICamera camera("test", attrs);
+
+    expect_jpeg(camera.get_images({}, ProtoStruct{}));
+    std::this_thread::sleep_for(std::chrono::milliseconds(1500));
+    const auto running_status = camera.get_status();
+    const double* running_fps = running_status.at(STATUS_FPS_KEY).get<double>();
+    ASSERT_NE(running_fps, nullptr);
+    EXPECT_GT(*running_fps, 3.0);
+
+    // A paused live source produces no frames
+    gst_element_set_state(camera.get_pipeline(), GST_STATE_PAUSED);
+    std::this_thread::sleep_for(std::chrono::milliseconds(2000));
+
+    // About 8 frames over the 3.5 s since the oldest one
+    const auto status = camera.get_status();
+    const double* stalled_fps = status.at(STATUS_FPS_KEY).get<double>();
+    ASSERT_NE(stalled_fps, nullptr);
+    EXPECT_GT(*stalled_fps, 0.0);
+    EXPECT_LT(*stalled_fps, 3.5);
+
+    camera.stop_pipeline();
+}
+
 // Test that GST pipeline can be started and stopped
 TEST(CSICamera, StartStopPipeline) {
     gst_init(nullptr, nullptr);

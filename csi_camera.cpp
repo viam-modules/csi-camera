@@ -267,9 +267,13 @@ ProtoStruct CSICamera::get_status() {
 
     double fps = 0.0;
     if (frame_arrivals.size() >= 2) {
+        const auto count = static_cast<double>(frame_arrivals.size());
         const std::chrono::duration<double> span = frame_arrivals.back() - frame_arrivals.front();
+        const std::chrono::duration<double> span_to_now = now - frame_arrivals.front();
         if (span.count() > 0) {
-            fps = static_cast<double>(frame_arrivals.size() - 1) / span.count();
+            // The time since the newest frame counts as one more interval, which
+            // lowers the rate only once the next frame is overdue
+            fps = std::min((count - 1) / span.count(), count / span_to_now.count());
         }
     }
 
