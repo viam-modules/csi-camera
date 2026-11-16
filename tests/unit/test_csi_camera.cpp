@@ -384,6 +384,66 @@ TEST(CSICamera, LastServedFrameWithoutEncodeOnRequest) {
     camera.stop_pipeline();
 }
 
+// Test that get_status reports the rate and age of the frames arriving from
+// the camera
+TEST(CSICamera, StatusReportsFrameFreshness) {
+    ensure_runtime();
+    ScopedDevice pi("pi");
+
+    ProtoStruct attrs;
+    attrs.insert(std::make_pair("encode_on_request", ProtoValue(true)));
+    CSICamera camera("test", attrs);
+
+    // Waits for the first frame; the test source then runs at a live 5 fps
+    expect_jpeg(camera.get_images({}, ProtoStruct{}));
+    std::this_thread::sleep_for(std::chrono::milliseconds(1500));
+
+    auto status = camera.get_status();
+    ASSERT_EQ(status.count(STATUS_FPS_KEY), 1);
+    ASSERT_EQ(status.count(STATUS_FRAME_AGE_KEY), 1);
+    const double* fps = status.at(STATUS_FPS_KEY).get<double>();
+    const double* age_ms = status.at(STATUS_FRAME_AGE_KEY).get<double>();
+    ASSERT_NE(fps, nullptr);
+    ASSERT_NE(age_ms, nullptr);
+    EXPECT_GT(*fps, 3.0);
+    EXPECT_LT(*fps, 7.0);
+    EXPECT_GE(*age_ms, 0.0);
+    EXPECT_LE(*age_ms, camera.max_frame_age().count());
+
+    camera.stop_pipeline();
+}
+
+// Test that the reported fps falls as soon as frames stop arriving, while the
+// frames from before the stall are still inside FPS_WINDOW
+TEST(CSICamera, StatusFpsFallsWhenFramesStop) {
+    ensure_runtime();
+    ScopedDevice pi("pi");
+
+    ProtoStruct attrs;
+    attrs.insert(std::make_pair("encode_on_request", ProtoValue(true)));
+    CSICamera camera("test", attrs);
+
+    expect_jpeg(camera.get_images({}, ProtoStruct{}));
+    std::this_thread::sleep_for(std::chrono::milliseconds(1500));
+    const auto running_status = camera.get_status();
+    const double* running_fps = running_status.at(STATUS_FPS_KEY).get<double>();
+    ASSERT_NE(running_fps, nullptr);
+    EXPECT_GT(*running_fps, 3.0);
+
+    // A paused live source produces no frames
+    gst_element_set_state(camera.get_pipeline(), GST_STATE_PAUSED);
+    std::this_thread::sleep_for(std::chrono::milliseconds(2000));
+
+    // About 8 frames over the 3.5 s since the oldest one
+    const auto status = camera.get_status();
+    const double* stalled_fps = status.at(STATUS_FPS_KEY).get<double>();
+    ASSERT_NE(stalled_fps, nullptr);
+    EXPECT_GT(*stalled_fps, 0.0);
+    EXPECT_LT(*stalled_fps, 3.5);
+
+    camera.stop_pipeline();
+}
+
 // Test that GST pipeline can be started and stopped
 TEST(CSICamera, StartStopPipeline) {
     gst_init(nullptr, nullptr);

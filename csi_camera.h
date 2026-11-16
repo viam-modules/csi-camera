@@ -3,6 +3,7 @@
 #include <chrono>
 #include <condition_variable>
 #include <cstdint>
+#include <deque>
 #include <map>
 #include <memory>
 #include <mutex>
@@ -91,6 +92,12 @@ class CSICamera : public viam::sdk::Camera {
     gst_sample_ptr latest_sample;
     uint64_t latest_frame_seq = 0;
     std::chrono::system_clock::time_point latest_frame_time;
+    // Arrival times of the frames within FPS_WINDOW, for the fps in get_status;
+    // monotonic so a wall clock step does not skew the rate
+    std::deque<std::chrono::steady_clock::time_point> frame_arrivals;
+    // Both expect frame_mutex to be held
+    void record_frame_arrival();
+    void drop_old_frame_arrivals(std::chrono::steady_clock::time_point now);
 
     // On-request encoding: owns the encode pipeline and the last encoded
     // frame; set only with raw_frames (defined in csi_camera.cpp)
