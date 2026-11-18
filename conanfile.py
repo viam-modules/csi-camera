@@ -44,7 +44,7 @@ class ViamCsi(ConanFile):
             self.version = match.group(1).strip()
 
     def validate(self):
-        check_min_cppstd(self, 17)
+        check_min_cppstd(self, 20)
 
     def requirements(self):
         self.requires("viam-cpp-sdk/0.46.0")
