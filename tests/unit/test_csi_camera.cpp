@@ -2,6 +2,7 @@
 #include <atomic>
 #include <cstdlib>
 #include <mutex>
+#include <optional>
 #include <set>
 #include <thread>
 #include <viam/sdk/common/instance.hpp>
@@ -41,7 +42,7 @@ class ScopedDevice {
     }
 
    private:
-    boost::optional<std::string> prev_device;
+    std::optional<std::string> prev_device;
 };
 
 static void expect_jpeg(const Camera::image_collection& collection) {
